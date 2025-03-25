@@ -134,4 +134,31 @@ impl Transaction {
             .get_or_insert_with(Vec::new)
             .push(joinsplit);
     }
+    
+    // Mutable accessors for position updating
+    
+    /// Get mutable access to sapling outputs
+    pub fn sapling_outputs_mut(&mut self) -> Option<&mut Vec<SaplingOutputDescription>> {
+        self.sapling_outputs.as_mut()
+    }
+    
+    /// Get mutable access to orchard actions
+    pub fn orchard_actions_mut(&mut self) -> Option<&mut Vec<OrchardActionDescription>> {
+        self.orchard_actions.as_mut()
+    }
+    
+    /// Get mutable access to sprout joinsplits
+    pub fn sprout_joinsplits_mut(&mut self) -> Option<&mut Vec<JoinSplitDescription>> {
+        self.sprout_joinsplits.as_mut()
+    }
+    
+    /// Get mutable access to inputs
+    pub fn inputs_mut(&mut self) -> Option<&mut Vec<TxIn>> {
+        self.inputs.as_mut()
+    }
+    
+    /// Get mutable access to outputs
+    pub fn outputs_mut(&mut self) -> Option<&mut Vec<TxOut>> {
+        self.outputs.as_mut()
+    }
 }

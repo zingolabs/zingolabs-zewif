@@ -1,5 +1,5 @@
 /// A position in a note commitment tree.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Position(u32);
 
 impl std::fmt::Debug for Position {
