@@ -49,3 +49,10 @@ impl std::fmt::Debug for SecondsSinceEpoch {
         write!(f, "{}", dt)
     }
 }
+
+// Display same as Debug
+impl std::fmt::Display for SecondsSinceEpoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}

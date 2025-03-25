@@ -138,6 +138,12 @@ impl<const N: usize> std::fmt::Debug for Blob<N> {
     }
 }
 
+impl<const N: usize> std::fmt::Display for Blob<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
 impl<const N: usize> From<Blob<N>> for Vec<u8> {
     fn from(blob: Blob<N>) -> Vec<u8> {
         blob.to_vec()

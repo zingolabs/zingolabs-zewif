@@ -59,7 +59,7 @@ mod_use!(zewif_wallet);
 
 use std::fmt::{self, Display, Formatter, Debug};
 
-pub struct NoQuotesDebugOption<'a, T>(&'a Option<T>);
+pub struct NoQuotesDebugOption<'a, T>(pub &'a Option<T>);
 
 impl<T: Display> Debug for NoQuotesDebugOption<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
