@@ -1,10 +1,23 @@
-use super::{BlockHeight, Data, TxId};
+use super::{BlockHeight, Data, SecondsSinceEpoch, TxId, u256};
 use crate::impl_attachable;
 
 use super::{
     Attachments, JoinSplitDescription, OrchardActionDescription, TxIn, TxOut,
     sapling::{SaplingOutputDescription, SaplingSpendDescription},
 };
+
+/// The status of a transaction in the blockchain
+#[derive(Debug, Clone, PartialEq)]
+pub enum TransactionStatus {
+    /// Transaction is in the mempool, not yet confirmed
+    Pending,
+    /// Transaction is confirmed in a block
+    Confirmed,
+    /// Transaction failed to be included in a block
+    Failed,
+    /// Transaction was abandoned
+    Abandoned,
+}
 
 /// A transaction that can combine both transparent and shielded components.
 #[derive(Debug, Clone)]
@@ -18,6 +31,12 @@ pub struct Transaction {
     /// export, the transaction could have been unmined, and possibly
     /// remined at a different height.
     mined_height: Option<BlockHeight>,
+    /// The timestamp of the transaction, if known.
+    timestamp: Option<SecondsSinceEpoch>,
+    /// The status of the transaction.
+    status: Option<TransactionStatus>,
+    /// The hash of the block containing the transaction, if known.
+    block_hash: Option<u256>,
 
     // Design issue: do we want to parse out all of this? All wallets will
     // necessarily have code to parse a transaction. The only information
@@ -51,6 +70,9 @@ impl Transaction {
             txid,
             raw: None,
             mined_height: None,
+            timestamp: None,
+            status: None,
+            block_hash: None,
             inputs: None,
             outputs: None,
             sapling_spends: None,
@@ -79,6 +101,30 @@ impl Transaction {
 
     pub fn set_mined_height(&mut self, height: BlockHeight) {
         self.mined_height = Some(height);
+    }
+    
+    pub fn timestamp(&self) -> Option<&SecondsSinceEpoch> {
+        self.timestamp.as_ref()
+    }
+    
+    pub fn set_timestamp(&mut self, timestamp: SecondsSinceEpoch) {
+        self.timestamp = Some(timestamp);
+    }
+    
+    pub fn status(&self) -> Option<&TransactionStatus> {
+        self.status.as_ref()
+    }
+    
+    pub fn set_status(&mut self, status: TransactionStatus) {
+        self.status = Some(status);
+    }
+    
+    pub fn block_hash(&self) -> Option<&u256> {
+        self.block_hash.as_ref()
+    }
+    
+    pub fn set_block_hash(&mut self, hash: u256) {
+        self.block_hash = Some(hash);
     }
 
     pub fn inputs(&self) -> Option<&Vec<TxIn>> {
