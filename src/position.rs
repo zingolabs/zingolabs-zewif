@@ -1,6 +1,12 @@
 /// A position in a note commitment tree.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct Position(u32);
+
+impl std::fmt::Debug for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Position({})", self.0)
+    }
+}
 
 impl From<u32> for Position {
     fn from(value: u32) -> Self {

@@ -43,6 +43,7 @@ mod_use!(shielded_address);
 mod_use!(spending_key);
 mod_use!(sprout_proof);
 mod_use!(sprout_witness);
+mod_use!(string_utils);
 mod_use!(transaction);
 mod_use!(transparent_address);
 mod_use!(transparent_spend_authority);
@@ -55,3 +56,27 @@ mod_use!(u252_type);
 mod_use!(u256_type);
 mod_use!(zewif_top);
 mod_use!(zewif_wallet);
+
+use std::fmt::{self, Display, Formatter, Debug};
+
+pub struct NoQuotesDebugOption<'a, T>(&'a Option<T>);
+
+impl<T: Display> Debug for NoQuotesDebugOption<'_, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(val) => write!(f, "Some({})", val),
+            None => write!(f, "None"),
+        }
+    }
+}
+
+pub struct DebugOption<'a, T>(&'a Option<T>);
+
+impl<T: Debug> Debug for DebugOption<'_, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(val) => write!(f, "Some({:?})", val),
+            None => write!(f, "None"),
+        }
+    }
+}

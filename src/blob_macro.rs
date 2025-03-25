@@ -63,6 +63,12 @@ macro_rules! blob {
             }
         }
 
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "{}({:?})", stringify!($name), self.0)
+            }
+        }
+
         impl Default for $name {
             fn default() -> Self {
                 Self($crate::Blob::default())

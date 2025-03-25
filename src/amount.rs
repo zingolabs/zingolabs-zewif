@@ -3,19 +3,25 @@ use std::{iter::Sum, ops::{Add, Mul, Neg, Sub}};
 use anyhow::{Error, Result, anyhow, bail};
 
 use super::parser::prelude::*;
-use crate::parse;
+use crate::{format_signed_zats_as_zec, parse};
 
 pub const COIN: u64 = 1_0000_0000;
 pub const MAX_MONEY: u64 = 21_000_000 * COIN;
 pub const MAX_BALANCE: i64 = MAX_MONEY as i64;
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Amount(i64);
 
 impl Parse for Amount {
     fn parse(p: &mut Parser) -> Result<Self> {
         let zat_balance = parse!(p, i64, "Zat balance")?;
         Amount::try_from(zat_balance).map_err(|_| anyhow!("Invalid Zat balance: {}", zat_balance))
+    }
+}
+
+impl std::fmt::Debug for Amount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Amount({})", format_signed_zats_as_zec(self.0))
     }
 }
 

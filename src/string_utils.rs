@@ -24,3 +24,12 @@ pub fn format_zats_as_zec(amount: impl Into<u64>) -> String {
     let trimmed_fraction = fraction_str.trim_end_matches('0');
     format!("ZEC {}.{}", integer, trimmed_fraction)
 }
+
+pub fn format_signed_zats_as_zec(amount: impl Into<i64>) -> String {
+    let amount = amount.into();
+    if amount < 0 {
+        format!("-{}", format_zats_as_zec(-amount as u64))
+    } else {
+        format_zats_as_zec(amount as u64)
+    }
+}

@@ -8,18 +8,17 @@ pub struct TxId([u8; 32]);
 
 impl fmt::Debug for TxId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // The (byte-flipped) hex string is more useful than the raw bytes, because we can
-        // look that up in RPC methods and block explorers.
-        let txid_str = self.to_string();
-        f.debug_tuple("TxId").field(&txid_str).finish()
+        write!(f, "TxId({})", self)
     }
 }
 
 impl fmt::Display for TxId {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The (byte-flipped) hex string is more useful than the raw bytes, because we can
+        // look that up in RPC methods and block explorers.
         let mut data = self.0;
         data.reverse();
-        formatter.write_str(&hex::encode(data))
+        f.write_str(&hex::encode(data))
     }
 }
 

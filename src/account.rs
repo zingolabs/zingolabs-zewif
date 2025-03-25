@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 
 use bc_components::ARID;
 
-use crate::impl_attachable;
+use crate::{impl_attachable, NoQuotesDebugOption};
 
 use super::{Address, Attachments, OrchardSentOutput, TxId, sapling::SaplingSentOutput};
 
 /// Logical grouping within a wallet. Each account can have its own set of
 /// addresses, transactions, and other metadata.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Account {
     id: ARID,
     name: String, // May not be unique.
@@ -20,6 +20,22 @@ pub struct Account {
     sapling_sent_outputs: Vec<SaplingSentOutput>,
     orchard_sent_outputs: Vec<OrchardSentOutput>,
     attachments: Attachments,
+}
+
+
+impl std::fmt::Debug for Account {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Account")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("zip32_account_id", &NoQuotesDebugOption(&self.zip32_account_id))
+            .field("addresses", &self.addresses)
+            .field("relevant_transactions", &self.relevant_transactions)
+            .field("sapling_sent_outputs", &self.sapling_sent_outputs)
+            .field("orchard_sent_outputs", &self.orchard_sent_outputs)
+            .field("attachments", &self.attachments)
+            .finish()
+    }
 }
 
 impl_attachable!(Account);

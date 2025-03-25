@@ -1,9 +1,11 @@
+use crate::NoQuotesDebugOption;
+
 use super::Data;
 
 use super::{sapling::SaplingIncomingViewingKey, SpendingKey};
 
 /// Details specific to shielded addresses.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ShieldedAddress {
     /// The actual address string (could encode Sapling, Orchard, etc.).
     address: String, // Unique
@@ -12,6 +14,17 @@ pub struct ShieldedAddress {
     spending_key: Option<SpendingKey>,
     /// Optional diversifier or other Zcash-specific metadata.
     diversifier: Option<Data>,
+}
+
+impl std::fmt::Debug for ShieldedAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShieldedAddress")
+            .field("address", &self.address)
+            .field("incoming_viewing_key", &NoQuotesDebugOption(&self.incoming_viewing_key))
+            .field("spending_key", &self.spending_key)
+            .field("diversifier", &self.diversifier)
+            .finish()
+    }
 }
 
 impl ShieldedAddress {

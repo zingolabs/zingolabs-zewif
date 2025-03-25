@@ -1,13 +1,24 @@
-use crate::impl_attachable;
+use crate::{DebugOption, impl_attachable};
 
 use super::{Attachments, ShieldedAddress, TransparentAddress};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Address {
     name: String,
     purpose: Option<String>,
     address: ProtocolAddress,
     attachments: Attachments,
+}
+
+impl std::fmt::Debug for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Address")
+            .field("name", &self.name)
+            .field("purpose", &DebugOption(&self.purpose))
+            .field("address", &self.address)
+            .field("attachments", &self.attachments)
+            .finish()
+    }
 }
 
 impl_attachable!(Address);

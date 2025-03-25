@@ -1,8 +1,10 @@
+use crate::NoQuotesDebugOption;
+
 use super::{Blob, u256};
 
 /// Represents a spending key which contains cryptographic material
 /// necessary to spend funds and view transaction details
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum SpendingKey {
     /// Sapling spending key with its components
     Sapling {
@@ -27,6 +29,34 @@ pub enum SpendingKey {
     },
     /// Raw key data format for backward compatibility or other protocols
     Raw(Blob<32>),
+}
+
+impl std::fmt::Debug for SpendingKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpendingKey::Sapling {
+                ask,
+                nsk,
+                ovk,
+                depth,
+                parent_fingerprint,
+                child_index,
+                chain_code,
+                dk,
+            } => f
+                .debug_struct("SpendingKey::Sapling")
+                .field("ask", ask)
+                .field("nsk", nsk)
+                .field("ovk", ovk)
+                .field("depth", &NoQuotesDebugOption(depth))
+                .field("parent_fingerprint", &NoQuotesDebugOption(parent_fingerprint))
+                .field("child_index", &NoQuotesDebugOption(child_index))
+                .field("chain_code", &NoQuotesDebugOption(chain_code))
+                .field("dk", &NoQuotesDebugOption(dk))
+                .finish(),
+            SpendingKey::Raw(key_data) => f.debug_tuple("SpendingKey::Raw").field(key_data).finish(),
+        }
+    }
 }
 
 impl SpendingKey {

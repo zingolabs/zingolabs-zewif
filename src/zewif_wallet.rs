@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bc_components::ARID;
 
-use crate::impl_attachable;
+use crate::{impl_attachable, NoQuotesDebugOption};
 use super::Network;
 
 use super::{Account, Attachments, Identifiable, SeedMaterial};
@@ -13,13 +13,25 @@ use super::{Account, Attachments, Identifiable, SeedMaterial};
 ///
 /// This is *not* the top level of the interchange format hierarchy. That is
 /// the `ZewifTop` type.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ZewifWallet {
     id: ARID,
     network: Network,
     seed_material: Option<SeedMaterial>,
     accounts: HashMap<ARID, Account>,
     attachments: Attachments,
+}
+
+impl std::fmt::Debug for ZewifWallet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ZewifWallet")
+            .field("id", &self.id)
+            .field("network", &self.network)
+            .field("seed_material", &NoQuotesDebugOption(&self.seed_material))
+            .field("accounts", &self.accounts)
+            .field("attachments", &self.attachments)
+            .finish()
+    }
 }
 
 impl Identifiable for ZewifWallet {
