@@ -59,7 +59,7 @@ pub type SaplingEncCiphertext = Blob<580>;
 /// output.set_enc_ciphertext(ciphertext);
 ///
 /// // Optional memo field attached to the note
-/// let memo_data = Data::new(vec![0u8; 32]); // In practice, this would be actual memo content
+/// let memo_data = Data::from_vec(vec![0u8; 32]); // In practice, this would be actual memo content
 /// output.set_memo(Some(memo_data));
 /// ```
 #[derive(Debug, Clone, Default)]

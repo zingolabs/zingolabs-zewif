@@ -1,3 +1,9 @@
+//! Standard implementations of the Parse trait for common types.
+//!
+//! This module provides binary deserialization implementations for primitive types,
+//! collections, and other standard types used throughout the ZeWIF codebase. The
+//! implementations here serve as the foundation for parsing complex Zcash data structures.
+
 use std::collections::HashMap;
 
 use anyhow::{Context, Result, bail};
