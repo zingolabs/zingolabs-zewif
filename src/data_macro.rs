@@ -1,33 +1,72 @@
+/// Creates a new type wrapping a variable-size byte array with common methods and trait implementations.
+///
+/// The `data!` macro generates a new type that wraps a [`Data`](crate::Data) container,
+/// automatically implementing common methods and traits. This provides a convenient way to
+/// create domain-specific types for variable-length binary data with minimal boilerplate.
+///
+/// # Usage
+///
+/// ```
+/// # use zewif::data;
+/// #
+/// // Define a type for variable-length script data
+/// data!(ScriptData);
+///
+/// // Use the generated type
+/// let script = ScriptData::new(vec![0xAA, 0xBB, 0xCC]);
+/// ```
+///
+/// # Generated Functionality
+///
+/// The generated type includes methods for creation, conversion, and inspection,
+/// as well as implementations for common traits like `Parse`, `Debug`, `Clone`,
+/// and various conversion traits to and from byte collections.
+///
+/// This macro is especially useful for creating strong types around Zcash protocol 
+/// elements that have variable lengths, such as encrypted memos, scripts, and 
+/// other dynamically-sized data.
 #[macro_export]
 macro_rules! data {
     ($name:ident) => {
         pub struct $name($crate::Data);
 
         impl $name {
+            /// Creates a new instance from a vector of bytes, taking ownership.
+            ///
+            /// This is the primary constructor when you have a `Vec<u8>` available.
             pub fn new(data: Vec<u8>) -> Self {
                 Self($crate::Data::from_vec(data))
             }
 
+            /// Returns the number of bytes in this data container.
             pub fn len(&self) -> usize {
                 self.0.len()
             }
 
+            /// Returns `true` if this data container is empty (contains no bytes).
             pub fn is_empty(&self) -> bool {
                 self.0.is_empty()
             }
 
+            /// Converts this data to a `Vec<u8>`, creating a copy.
             pub fn to_vec(&self) -> Vec<u8> {
                 self.0.to_vec()
             }
 
+            /// Creates an instance from a slice of bytes.
             pub fn from_slice(data: &[u8]) -> Self {
                 Self($crate::Data::from_slice(data))
             }
 
+            /// Creates an instance from a `Vec<u8>`, taking ownership of the vector.
             pub fn from_vec(data: Vec<u8>) -> Self {
                 Self($crate::Data::from_vec(data))
             }
 
+            /// Creates an instance from a hexadecimal string.
+            ///
+            /// # Panics
+            /// Panics if the hex string cannot be decoded.
             pub fn from_hex(hex: &str) -> Self {
                 Self($crate::Data::from_hex(hex).unwrap())
             }
@@ -81,8 +120,13 @@ macro_rules! data {
             }
         }
 
-        impl $crate::Parse for $name {
-            fn parse(parser: &mut $crate::Parser) -> ::anyhow::Result<Self> {
+        impl $crate::parser::Parse for $name {
+            /// Parses this type from a binary data stream.
+            ///
+            /// This implementation allows the type to be used with the `parse!` macro.
+            /// The data is parsed as a length-prefixed byte array using a `CompactSize`
+            /// value to indicate the length.
+            fn parse(parser: &mut $crate::parser::Parser) -> ::anyhow::Result<Self> {
                 Ok(Self($crate::Data::parse(parser)?))
             }
         }

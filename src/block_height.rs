@@ -4,6 +4,47 @@ use std::ops::{Add, Sub};
 
 use crate::{parse, parser::prelude::*};
 
+/// A block's position in the blockchain, represented as a distance from the genesis block.
+///
+/// `BlockHeight` represents the number of blocks between a specific block and the genesis 
+/// block (block zero). Each block increments the height by one, forming a total ordering 
+/// that defines the blockchain's canonical sequence.
+///
+/// # Zcash Concept Relation
+/// In Zcash, like Bitcoin, block height is crucial for:
+///
+/// - Identifying when transactions were confirmed
+/// - Determining when network upgrades activate
+/// - Calculating confirmation counts
+/// - Anchoring shielded transactions to specific blockchain states
+///
+/// Many Zcash protocol parameters are defined in terms of block heights, including
+/// upgrade activation heights and consensus rule changes.
+///
+/// # Data Preservation
+/// `BlockHeight` preserves the numeric height values from wallet data, which are essential
+/// for chronological ordering of transactions and for determining whether specific network
+/// features were active when a transaction was created.
+///
+/// # Implementation Details
+/// Internally, block heights are stored as unsigned 32-bit integers, which can represent
+/// blocks up to approximately 136 years into the future at Zcash's target rate of one
+/// block every 75 seconds.
+///
+/// # Examples
+/// ```
+/// use zewif::BlockHeight;
+///
+/// // The genesis block
+/// let genesis = BlockHeight::from(0u32);
+///
+/// // Block #1,000,000
+/// let millionth = BlockHeight::from(1_000_000u32);
+///
+/// // Calculate difference between blocks
+/// let blocks_between = millionth - genesis;
+/// assert_eq!(blocks_between, 1_000_000);
+/// ```
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BlockHeight(u32);
@@ -12,47 +53,82 @@ pub struct BlockHeight(u32);
 pub const H0: BlockHeight = BlockHeight(0);
 
 impl BlockHeight {
+    /// Creates a new `BlockHeight` from a u32 value.
+    ///
+    /// This constructor is a `const fn`, which allows it to be used in constant expressions.
+    ///
+    /// # Examples
+    /// ```
+    /// use zewif::BlockHeight;
+    ///
+    /// // Create a constant block height
+    /// const CANOPY_ACTIVATION: BlockHeight = BlockHeight::from_u32(1_046_400);
+    /// ```
     pub const fn from_u32(v: u32) -> BlockHeight {
         BlockHeight(v)
     }
 
     /// Subtracts the provided value from this height, returning `H0` if this would result in
     /// underflow of the wrapped `u32`.
+    ///
+    /// This method ensures that block height calculations never underflow below the genesis
+    /// block (height 0), which would be an invalid state in a blockchain.
+    ///
+    /// # Examples
+    /// ```
+    /// use zewif::BlockHeight;
+    ///
+    /// let height = BlockHeight::from(100u32);
+    /// 
+    /// // Normal subtraction
+    /// let earlier = height.saturating_sub(50);
+    /// assert_eq!(u32::from(earlier), 50);
+    ///
+    /// // Saturating at genesis block (0) when underflow would occur
+    /// let genesis = height.saturating_sub(200); // Would be -100, saturates to 0
+    /// assert_eq!(u32::from(genesis), 0);
+    /// ```
     pub fn saturating_sub(self, v: u32) -> BlockHeight {
         BlockHeight(self.0.saturating_sub(v))
     }
 }
 
+/// Displays the block height as a plain number
 impl fmt::Display for BlockHeight {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
+/// Implements a total ordering between block heights
 impl Ord for BlockHeight {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
     }
 }
 
+/// Implements a partial ordering between block heights
 impl PartialOrd for BlockHeight {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
+/// Creates a BlockHeight from a u32 value
 impl From<u32> for BlockHeight {
     fn from(value: u32) -> Self {
         BlockHeight(value)
     }
 }
 
+/// Extracts the u32 value from a BlockHeight
 impl From<BlockHeight> for u32 {
     fn from(value: BlockHeight) -> u32 {
         value.0
     }
 }
 
+/// Creates a BlockHeight from a u64 value if it fits in a u32
 impl TryFrom<u64> for BlockHeight {
     type Error = std::num::TryFromIntError;
 
@@ -61,12 +137,14 @@ impl TryFrom<u64> for BlockHeight {
     }
 }
 
+/// Converts a BlockHeight to a u64 value
 impl From<BlockHeight> for u64 {
     fn from(value: BlockHeight) -> u64 {
         value.0 as u64
     }
 }
 
+/// Creates a BlockHeight from a signed i32 if it's non-negative
 impl TryFrom<i32> for BlockHeight {
     type Error = std::num::TryFromIntError;
 
@@ -75,6 +153,7 @@ impl TryFrom<i32> for BlockHeight {
     }
 }
 
+/// Creates a BlockHeight from a signed i64 if it fits in a u32
 impl TryFrom<i64> for BlockHeight {
     type Error = std::num::TryFromIntError;
 
@@ -83,12 +162,14 @@ impl TryFrom<i64> for BlockHeight {
     }
 }
 
+/// Converts a BlockHeight to a signed i64 value
 impl From<BlockHeight> for i64 {
     fn from(value: BlockHeight) -> i64 {
         value.0 as i64
     }
 }
 
+/// Adds a block count to a height, with saturation to prevent overflow
 impl Add<u32> for BlockHeight {
     type Output = Self;
 
@@ -97,6 +178,7 @@ impl Add<u32> for BlockHeight {
     }
 }
 
+/// Subtracts a block count from a height, with saturation to prevent underflow
 impl Sub<u32> for BlockHeight {
     type Output = Self;
 
@@ -105,6 +187,7 @@ impl Sub<u32> for BlockHeight {
     }
 }
 
+/// Calculates the block count between two heights, with saturation
 impl Sub<BlockHeight> for BlockHeight {
     type Output = u32;
 
@@ -113,6 +196,7 @@ impl Sub<BlockHeight> for BlockHeight {
     }
 }
 
+/// Parses a BlockHeight from a binary data stream
 impl Parse for BlockHeight {
     fn parse(p: &mut Parser) -> anyhow::Result<Self> {
         let height = parse!(p, u32, "BlockHeight")?;

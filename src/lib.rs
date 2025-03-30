@@ -36,6 +36,8 @@ mod_use!(orchard_action_description);
 mod_use!(orchard_sent_output);
 mod_use!(phgr_proof);
 mod_use!(position);
+mod_use!(protocol_address);
+mod_use!(receiver_type);
 mod_use!(script);
 mod_use!(seconds_since_epoch);
 mod_use!(seed_material);
@@ -54,6 +56,7 @@ mod_use!(txid);
 mod_use!(u160_type);
 mod_use!(u252_type);
 mod_use!(u256_type);
+mod_use!(unified_address);
 mod_use!(zewif_top);
 mod_use!(zewif_wallet);
 

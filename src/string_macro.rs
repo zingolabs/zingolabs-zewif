@@ -1,3 +1,30 @@
+/// Creates a new type wrapping a String with common methods and trait implementations.
+///
+/// The `string!` macro generates a new type that wraps a Rust `String`,
+/// automatically implementing common methods and traits. This provides a convenient way to
+/// create domain-specific string types with minimal boilerplate.
+///
+/// # Usage
+///
+/// ```
+/// # use zewif::string;
+/// #
+/// // Define a type for address labels
+/// string!(AddressLabel);
+///
+/// // Use the generated type
+/// let label = AddressLabel::from("My Savings".to_string());
+/// ```
+///
+/// # Generated Functionality
+///
+/// The generated type includes conversions to and from standard Rust string types,
+/// as well as implementations for common traits like `Parse`, `Debug`, `Display`,
+/// `Clone`, `PartialEq`, `Eq`, and `Hash`.
+///
+/// In the ZeWIF format, this macro is useful for creating strongly-typed
+/// string values such as address labels, wallet notes, purpose strings, and
+/// other textual metadata associated with addresses and accounts.
 #[macro_export]
 macro_rules! string {
     ($name:ident) => {
@@ -36,32 +63,48 @@ macro_rules! string {
         }
 
         impl Default for $name {
+            /// Creates a new empty string instance.
             fn default() -> Self {
                 Self(String::new())
             }
         }
 
         impl $crate::parser::Parse for $name {
+            /// Parses this type from a binary data stream.
+            ///
+            /// This implementation allows the type to be used with the `parse!` macro.
+            /// The string is assumed to be encoded in the binary format as a length-prefixed
+            /// UTF-8 string.
             fn parse(p: &mut $crate::parser::Parser) -> ::anyhow::Result<Self> {
                 Ok(Self($crate::parse!(p, "string")?))
             }
         }
 
         impl From<$name> for String {
+            /// Converts this wrapped string type to a standard Rust String.
             fn from(s: $name) -> Self {
                 s.0
             }
         }
 
         impl From<&$name> for String {
+            /// Creates a copy of this wrapped string as a standard Rust String.
             fn from(s: &$name) -> Self {
                 s.0.clone()
             }
         }
 
         impl From<String> for $name {
+            /// Creates a new instance from a standard Rust String.
             fn from(s: String) -> Self {
                 Self(s)
+            }
+        }
+
+        impl From<&str> for $name {
+            /// Creates a new instance from a string slice.
+            fn from(s: &str) -> Self {
+                Self(s.to_string())
             }
         }
     };

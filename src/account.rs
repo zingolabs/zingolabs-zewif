@@ -4,17 +4,27 @@ use bc_components::ARID;
 
 use crate::{impl_attachable, NoQuotesDebugOption};
 
-use super::{Address, Attachments, OrchardSentOutput, TxId, sapling::SaplingSentOutput};
+use super::{
+    Address, Attachments, OrchardSentOutput, 
+    TxId,
+    sapling::SaplingSentOutput,
+};
 
 /// Logical grouping within a wallet. Each account can have its own set of
 /// addresses, transactions, and other metadata.
 #[derive(Clone)]
 pub struct Account {
     id: ARID,
-    name: String, // May not be unique.
+
+    // User-defined, may not be unique.
+    name: String,
+
     zip32_account_id: Option<u32>,
     addresses: HashMap<String, Address>,
-    relevant_transactions: HashSet<TxId>, // Subset of the global transaction history.
+
+    // Subset of the global transaction history.
+    relevant_transactions: HashSet<TxId>,
+
     // The following are intended for storage of information that may not be
     // recoverable from the chain.
     sapling_sent_outputs: Vec<SaplingSentOutput>,

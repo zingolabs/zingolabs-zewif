@@ -3,6 +3,39 @@ use std::io::{self, Read, Write};
 use super::parser::prelude::*;
 use anyhow::Result;
 
+/// A transaction identifier (TxId) represented as a 32-byte hash.
+///
+/// `TxId` is a specialized wrapper around a 32-byte array representing a transaction's
+/// unique identifier in the Zcash blockchain. Transaction IDs are double-SHA256 hashes
+/// of the transaction data (with specific rules for what parts are included in the hash).
+///
+/// # Zcash Concept Relation
+/// In Zcash (and Bitcoin-derived cryptocurrencies), transaction IDs are critical identifiers
+/// used to reference transactions throughout the protocol:
+/// - In transaction inputs to reference previous outputs being spent
+/// - In block data structures to identify included transactions
+/// - In client APIs and explorers to look up transaction details
+///
+/// Transaction IDs are displayed in reverse byte order by convention (to match
+/// Bitcoin's historical display format), while stored internally in little-endian order.
+///
+/// # Data Preservation
+/// The `TxId` type preserves the exact 32-byte transaction identifier as found in wallet
+/// data files, ensuring that transaction references maintain their cryptographic integrity
+/// during wallet migrations.
+///
+/// # Examples
+/// ```
+/// use zewif::TxId;
+///
+/// // Create a TxId from a byte array
+/// let tx_bytes = [0u8; 32];
+/// let txid = TxId::from_bytes(tx_bytes);
+///
+/// // Display the TxId in the conventional reversed format used by explorers
+/// // Note: this would display as a string of 64 hex characters (zeros in this example)
+/// println!("Transaction ID: {}", txid);
+/// ```
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct TxId([u8; 32]);
 
@@ -35,22 +68,100 @@ impl From<TxId> for [u8; 32] {
 }
 
 impl Parse for TxId {
+    /// Parses a `TxId` from a binary data stream.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # use zewif::TxId;
+    /// # use zewif::parser::Parser;
+    /// # use zewif::parse;
+    /// # use anyhow::Result;
+    /// #
+    /// # fn example(parser: &mut Parser) -> Result<()> {
+    /// // Parse a transaction ID from a binary stream
+    /// let txid = parse!(parser, TxId, "transaction ID")?;
+    /// # Ok(())
+    /// # }
+    /// ```
     fn parse(p: &mut Parser) -> Result<Self> {
         Ok(TxId::read(p)?)
     }
 }
 
 impl TxId {
+    /// Creates a new `TxId` from a 32-byte array.
+    ///
+    /// This is the primary constructor for `TxId` when you have the raw transaction
+    /// hash available.
+    ///
+    /// # Examples
+    /// ```
+    /// use zewif::TxId;
+    ///
+    /// // Usually this would be a real transaction hash
+    /// let bytes = [0u8; 32];
+    /// let txid = TxId::from_bytes(bytes);
+    /// ```
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         TxId(bytes)
     }
 
+    /// Reads a `TxId` from any source implementing the `Read` trait.
+    ///
+    /// This method is useful when reading transaction IDs directly from files
+    /// or other byte streams.
+    ///
+    /// # Errors
+    /// Returns an IO error if reading fails or if there aren't enough bytes available.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # use std::io::Cursor;
+    /// # use zewif::TxId;
+    /// # use anyhow::Result;
+    /// #
+    /// # fn example() -> Result<()> {
+    /// // Create a cursor with 32 bytes
+    /// let data = vec![0u8; 32];
+    /// let mut cursor = Cursor::new(data);
+    ///
+    /// // Read a TxId from the cursor
+    /// let txid = TxId::read(&mut cursor)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut hash = [0u8; 32];
         reader.read_exact(&mut hash)?;
         Ok(TxId::from_bytes(hash))
     }
 
+    /// Writes a `TxId` to any destination implementing the `Write` trait.
+    ///
+    /// This method is useful when serializing transaction IDs to files or
+    /// other byte streams.
+    ///
+    /// # Errors
+    /// Returns an IO error if writing fails.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # use std::io::Cursor;
+    /// # use zewif::TxId;
+    /// # use anyhow::Result;
+    /// #
+    /// # fn example() -> Result<()> {
+    /// let txid = TxId::from_bytes([0u8; 32]);
+    /// let mut buffer = Vec::new();
+    ///
+    /// // Write the TxId to the buffer
+    /// txid.write(&mut buffer)?;
+    ///
+    /// // The buffer now contains the 32-byte transaction ID
+    /// assert_eq!(buffer.len(), 32);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
         writer.write_all(&self.0)?;
         Ok(())

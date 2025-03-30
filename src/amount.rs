@@ -5,10 +5,54 @@ use anyhow::{Error, Result, anyhow, bail};
 use super::parser::prelude::*;
 use crate::{format_signed_zats_as_zec, parse};
 
+/// Number of zatoshis (zats) in 1 ZEC
 pub const COIN: u64 = 1_0000_0000;
+/// Maximum possible ZEC supply in zatoshis (21 million ZEC)
 pub const MAX_MONEY: u64 = 21_000_000 * COIN;
+/// Maximum balance as a signed value
 pub const MAX_BALANCE: i64 = MAX_MONEY as i64;
 
+/// A type-safe representation of a ZCash amount in zatoshis (zats).
+///
+/// `Amount` represents a monetary value in the Zcash cryptocurrency, stored
+/// internally as a signed 64-bit integer count of zatoshis. One ZEC equals
+/// 100,000,000 zatoshis (1 ZEC = 10^8 zats), similar to Bitcoin's satoshis.
+///
+/// The signed representation allows for representing both positive amounts
+/// (payments received) and negative amounts (payments sent) in transaction
+/// and balance calculations.
+///
+/// # Zcash Concept Relation
+/// In Zcash, monetary values are represented in two units:
+/// - ZEC: The main unit of currency (analogous to dollars)
+/// - zatoshis (zats): The smallest indivisible unit (analogous to cents)
+///
+/// Amount enforces the protocol limit of 21 million total ZEC, preventing
+/// overflow or underflow in calculations with proper error handling.
+///
+/// # Data Preservation
+/// The `Amount` type preserves the exact zatoshi values from wallet data,
+/// maintaining precise balances and transaction amounts during wallet migration.
+/// When displayed, values are formatted as ZEC with decimal places.
+///
+/// # Examples
+/// ```
+/// use zewif::Amount;
+/// use anyhow::Result;
+///
+/// # fn example() -> Result<()> {
+/// // Create an amount of 1.5 ZEC (150,000,000 zatoshis)
+/// let amount = Amount::from_u64(150_000_000)?;
+///
+/// // Check if the amount is positive
+/// assert!(amount.is_positive());
+///
+/// // Convert to raw zatoshi value
+/// let zats: i64 = amount.into();
+/// assert_eq!(zats, 150_000_000);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Amount(i64);
 
@@ -125,6 +169,37 @@ impl Amount {
         self.0.is_negative()
     }
 
+    /// Sums a collection of Amount values with overflow checking.
+    ///
+    /// This helper method safely adds a collection of Amounts, returning None if
+    /// any intermediate calculation would exceed the valid Amount range.
+    ///
+    /// # Arguments
+    /// * `values` - An iterable collection of Amount values to sum
+    ///
+    /// # Returns
+    /// * `Some(Amount)` - The sum if all operations were successful
+    /// * `None` - If any intermediate sum would exceed MAX_BALANCE
+    ///
+    /// # Examples
+    /// ```
+    /// use zewif::Amount;
+    /// use anyhow::Result;
+    ///
+    /// # fn example() -> Result<()> {
+    /// // Sum several ZEC amounts
+    /// let amounts = vec![
+    ///     Amount::from_u64(100_000_000)?, // 1 ZEC
+    ///     Amount::from_u64(50_000_000)?,  // 0.5 ZEC
+    ///     Amount::from_u64(25_000_000)?,  // 0.25 ZEC
+    /// ];
+    ///
+    /// let total = Amount::sum(amounts).unwrap();
+    /// let total_zats: i64 = total.into();
+    /// assert_eq!(total_zats, 175_000_000); // 1.75 ZEC
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn sum<I: IntoIterator<Item = Amount>>(values: I) -> Option<Amount> {
         let mut result = Amount::zero();
         for value in values {
@@ -134,6 +209,7 @@ impl Amount {
     }
 }
 
+/// Converts an i64 into an Amount, with range checking
 impl TryFrom<i64> for Amount {
     type Error = Error;
 
@@ -142,18 +218,21 @@ impl TryFrom<i64> for Amount {
     }
 }
 
+/// Extracts the raw i64 zatoshi value from an Amount
 impl From<Amount> for i64 {
     fn from(amount: Amount) -> i64 {
         amount.0
     }
 }
 
+/// Extracts the raw i64 zatoshi value from an Amount reference
 impl From<&Amount> for i64 {
     fn from(amount: &Amount) -> i64 {
         amount.0
     }
 }
 
+/// Converts an Amount to u64, ensuring the value is non-negative
 impl TryFrom<Amount> for u64 {
     type Error = Error;
 
@@ -165,6 +244,7 @@ impl TryFrom<Amount> for u64 {
     }
 }
 
+/// Adds two Amounts, checking for overflow/underflow
 impl Add<Amount> for Amount {
     type Output = Option<Amount>;
 
@@ -173,6 +253,7 @@ impl Add<Amount> for Amount {
     }
 }
 
+/// Adds an Amount to an Option<Amount>, propagating None
 impl Add<Amount> for Option<Amount> {
     type Output = Self;
 
@@ -181,6 +262,7 @@ impl Add<Amount> for Option<Amount> {
     }
 }
 
+/// Subtracts one Amount from another, checking for overflow/underflow
 impl Sub<Amount> for Amount {
     type Output = Option<Amount>;
 
@@ -189,6 +271,7 @@ impl Sub<Amount> for Amount {
     }
 }
 
+/// Subtracts an Amount from an Option<Amount>, propagating None
 impl Sub<Amount> for Option<Amount> {
     type Output = Self;
 
@@ -197,18 +280,21 @@ impl Sub<Amount> for Option<Amount> {
     }
 }
 
+/// Implements std::iter::Sum for Amount with overflow checking
 impl Sum<Amount> for Option<Amount> {
     fn sum<I: Iterator<Item = Amount>>(mut iter: I) -> Self {
         iter.try_fold(Amount::zero(), |acc, a| acc + a)
     }
 }
 
+/// Implements std::iter::Sum for Amount references with overflow checking
 impl<'a> Sum<&'a Amount> for Option<Amount> {
     fn sum<I: Iterator<Item = &'a Amount>>(mut iter: I) -> Self {
         iter.try_fold(Amount::zero(), |acc, a| acc + *a)
     }
 }
 
+/// Negates an Amount, flipping its sign
 impl Neg for Amount {
     type Output = Self;
 
@@ -217,6 +303,7 @@ impl Neg for Amount {
     }
 }
 
+/// Multiplies an Amount by a usize factor, checking for overflow/underflow
 impl Mul<usize> for Amount {
     type Output = Option<Amount>;
 

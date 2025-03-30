@@ -8,8 +8,48 @@ use anyhow::{Context, Result};
 use super::u256;
 use super::{Network, ProtocolAddress};
 
-/// Represents a universal identifier for addresses across different ZCash protocols
-/// (transparent, sapling, orchard, etc.)
+/// A universal identifier for addresses across different Zcash protocols.
+///
+/// `AddressId` provides a common interface for working with addresses from all Zcash
+/// protocols: transparent, Sapling, Orchard, and unified addresses. This type serves
+/// as a key abstraction in wallet data migration, allowing addresses to be tracked
+/// consistently regardless of their underlying protocol type.
+///
+/// # Zcash Concept Relation
+/// In Zcash, each protocol has its own address format with different capabilities:
+///
+/// - **Transparent addresses**: Bitcoin-compatible addresses starting with 't'
+/// - **Sapling addresses**: Shielded addresses starting with 'zs'
+/// - **Orchard addresses**: Newer shielded addresses starting with 'zo'
+/// - **Unified addresses**: Multi-protocol addresses starting with 'u'
+///
+/// This type also supports internal account identifiers, which may not have direct
+/// string representations but are used to reference specific accounts in unified
+/// wallet structures.
+///
+/// # Data Preservation
+/// `AddressId` preserves both the full address strings and their protocol types,
+/// ensuring that all address data is correctly maintained during wallet migration.
+/// It also maintains the relationship between addresses and unified accounts.
+///
+/// # Examples
+/// ```
+/// use zewif::{AddressId, Network};
+/// use std::str::FromStr;
+///
+/// // Create address IDs from address strings
+/// let transparent = AddressId::from_address_string("t1abcdef", Network::Main).unwrap();
+/// assert_eq!(transparent.protocol_type(), "transparent");
+/// 
+/// // Parse from string representation with protocol prefix
+/// let sapling = AddressId::from_str("zs:zs1abcdef").unwrap();
+/// assert_eq!(sapling.protocol_type(), "sapling");
+///
+/// // Get the underlying address string
+/// if let Some(addr) = sapling.address_string() {
+///     println!("Sapling address: {}", addr);
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AddressId {
     /// Transparent address (P2PKH or P2SH)
@@ -25,7 +65,22 @@ pub enum AddressId {
 }
 
 impl AddressId {
-    /// Create a new AddressId from a ProtocolAddress
+    /// Creates a new `AddressId` from a `ProtocolAddress`.
+    ///
+    /// This converts a protocol-specific address into a universal identifier,
+    /// automatically determining the correct address type based on the input.
+    ///
+    /// # Examples
+    /// ```
+    /// # use zewif::{AddressId, ProtocolAddress, TransparentAddress};
+    /// #
+    /// // Create a transparent protocol address
+    /// let transparent = ProtocolAddress::Transparent(TransparentAddress::new("t1abcdef".to_string()));
+    /// 
+    /// // Convert to AddressId
+    /// let addr_id = AddressId::from_protocol_address(&transparent);
+    /// assert_eq!(addr_id.protocol_type(), "transparent");
+    /// ```
     pub fn from_protocol_address(address: &ProtocolAddress) -> Self {
         match address {
             ProtocolAddress::Transparent(addr) => Self::Transparent(addr.address().to_string()),
@@ -41,11 +96,39 @@ impl AddressId {
                     // Default to Sapling if we can't determine the type
                     Self::Sapling(addr_str.to_string())
                 }
-            }
+            },
+            ProtocolAddress::Unified(addr) => Self::Unified(addr.address().to_string())
         }
     }
 
-    /// Create a new AddressId from a string representation of an address and network info
+    /// Creates a new `AddressId` from a string representation of an address and network information.
+    ///
+    /// This method determines the address type based on the address prefix:
+    /// - 't' for transparent addresses
+    /// - 'zs' for Sapling addresses
+    /// - 'zo' for Orchard addresses
+    /// - 'u' for unified addresses
+    ///
+    /// # Arguments
+    /// * `address` - The address string to convert
+    /// * `_network` - The Zcash network (mainnet, testnet, regtest)
+    ///
+    /// # Returns
+    /// A Result containing the AddressId if successful, or an error if the address type
+    /// cannot be determined.
+    ///
+    /// # Examples
+    /// ```
+    /// # use zewif::{AddressId, Network};
+    /// #
+    /// // Create an AddressId from a transparent address string
+    /// let result = AddressId::from_address_string("t1abcdef", Network::Main);
+    /// assert!(result.is_ok());
+    /// 
+    /// // Create an AddressId from a Sapling address string
+    /// let result = AddressId::from_address_string("zs1abcdef", Network::Test);
+    /// assert!(result.is_ok());
+    /// ```
     pub fn from_address_string(address: &str, _network: Network) -> Result<Self> {
         // Try to determine the type based on the address prefix
         if address.starts_with('t') {
@@ -144,7 +227,47 @@ impl FromStr for AddressId {
     }
 }
 
-/// Tracks address-to-account mappings during wallet migration
+/// A registry that tracks address-to-account mappings during wallet migration.
+///
+/// `AddressRegistry` maintains a bidirectional mapping between addresses and accounts,
+/// allowing wallet migration tools to properly associate addresses with their respective
+/// accounts. This is particularly important for wallets with multiple accounts or
+/// unified accounts with multiple address types.
+///
+/// # Zcash Concept Relation
+/// In Zcash wallets, especially those with hierarchical deterministic (HD) key structures,
+/// multiple addresses can belong to the same account. The `AddressRegistry` preserves these
+/// relationships during migration, ensuring that account structure is maintained.
+///
+/// # Data Preservation
+/// This registry ensures that the logical grouping of addresses into accounts is preserved
+/// during wallet migration, maintaining the wallet's organizational structure.
+///
+/// # Examples
+/// ```
+/// # use zewif::{AddressId, AddressRegistry, u256};
+/// #
+/// // Create a new registry
+/// let mut registry = AddressRegistry::new();
+///
+/// // Create test addresses and account IDs
+/// let addr1 = AddressId::Transparent("t1111".to_string());
+/// let addr2 = AddressId::Sapling("zs2222".to_string());
+/// 
+/// // Create an account ID
+/// let account1 = u256::default();
+///
+/// // Register addresses to the account
+/// registry.register(addr1.clone(), account1);
+/// registry.register(addr2.clone(), account1);
+///
+/// // Find the account for an address
+/// assert_eq!(registry.find_account(&addr1), Some(&account1));
+///
+/// // Find all addresses for an account
+/// let account_addresses = registry.find_addresses_for_account(&account1);
+/// assert_eq!(account_addresses.len(), 2);
+/// ```
 #[derive(Debug, Default)]
 pub struct AddressRegistry {
     // Maps from AddressId to account identifier (u256)
