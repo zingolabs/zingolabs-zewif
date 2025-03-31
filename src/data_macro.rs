@@ -10,7 +10,7 @@
 /// # use zewif::data;
 /// #
 /// // Define a type for variable-length script data
-/// data!(ScriptData);
+/// data!(ScriptData, "A variable-length script for Zcash transactions.");
 ///
 /// // Use the generated type
 /// let script = ScriptData::new(vec![0xAA, 0xBB, 0xCC]);
@@ -22,12 +22,13 @@
 /// as well as implementations for common traits like `Parse`, `Debug`, `Clone`,
 /// and various conversion traits to and from byte collections.
 ///
-/// This macro is especially useful for creating strong types around Zcash protocol 
-/// elements that have variable lengths, such as encrypted memos, scripts, and 
+/// This macro is especially useful for creating strong types around Zcash protocol
+/// elements that have variable lengths, such as encrypted memos, scripts, and
 /// other dynamically-sized data.
 #[macro_export]
 macro_rules! data {
-    ($name:ident) => {
+    ($name:ident, $doc:expr) => {
+        #[doc = $doc]
         pub struct $name($crate::Data);
 
         impl $name {

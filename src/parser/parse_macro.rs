@@ -10,9 +10,7 @@
 /// ## Basic Type Parsing
 /// Parse a type that implements the `Parse` trait:
 /// ```no_run
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use zewif::CompactSize;
+/// # use zewif::{parser::prelude::*, parse, CompactSize};
 /// # use anyhow::Result;
 /// # fn example(parser: &mut Parser) -> Result<()> {
 /// let size = parse!(parser, CompactSize, "transaction size")?;
@@ -23,9 +21,7 @@
 /// ## Parsing Data with a Fixed Length
 /// Parse a fixed-length byte array or Data object:
 /// ```no_run
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use zewif::Data;
+/// # use zewif::{parser::prelude::*, parse, Data};
 /// # use anyhow::Result;
 /// # fn example(parser: &mut Parser) -> Result<()> {
 /// // Parse 32 bytes (e.g. for a hash)
@@ -39,8 +35,7 @@
 /// ## Parsing with Parameters
 /// Parse a type that implements `ParseWithParam` and needs additional parameters:
 /// ```no_run
-/// # use zewif::parser::{Parser, ParseWithParam};
-/// # use zewif::parse;
+/// # use zewif::{parser::prelude::*, parse};
 /// # use anyhow::Result;
 /// # 
 /// # // Define a dummy type that implements ParseWithParam for the example

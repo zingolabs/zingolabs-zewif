@@ -3,11 +3,72 @@ use super::{Blob, Data, u256};
 
 use super::{Anchor, Attachments, IncrementalWitness, Position};
 
+/// The depth of the Orchard Merkle tree, set to 32 levels.
+///
+/// This constant defines the maximum depth of the Orchard note commitment tree,
+/// which allows for 2^32 (over 4 billion) note commitments to be included.
 const ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH: usize = 32;
+
+/// A type alias for the Sinsemilla hash used in Orchard Merkle trees.
+///
+/// Sinsemilla hashes are cryptographic hash functions used for note commitments 
+/// and in the Merkle tree structure for the Orchard protocol. They provide efficient
+/// hashing with homomorphic properties used in zero-knowledge proofs.
 pub type SinsemillaHash = u256;
+
+/// A cryptographic witness proving that an Orchard note commitment exists in the note commitment tree.
+///
+/// This type specializes the generic `IncrementalWitness` for the Orchard protocol parameters.
 pub type OrchardWitness = IncrementalWitness<ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH, SinsemillaHash>;
 
-/// Data specific to Orchard actions.
+/// A description of an action in the Orchard shielded pool.
+///
+/// `OrchardActionDescription` represents a combined spend and output in the Orchard
+/// shielded protocol. Unlike earlier protocols that separated spends and outputs,
+/// Orchard uses a unified "action" approach where a single privacy-preserving operation
+/// can consume existing notes and create new ones.
+///
+/// # Zcash Concept Relation
+///
+/// In Zcash's Orchard protocol:
+///
+/// - **Actions**: The fundamental building blocks of Orchard transactions
+/// - **Unified Design**: Each action combines aspects of both spending and output creation
+/// - **Note Commitments**: Cryptographic commitments to shielded values and metadata
+/// - **Nullifiers**: Unique identifiers published when spending notes to prevent double-spending
+/// - **Witnesses**: Cryptographic proofs demonstrating note existence in the commitment tree
+///
+/// Orchard was introduced in the NU5 network upgrade and represents the most
+/// advanced shielded protocol in Zcash, with improvements over both Sprout and Sapling.
+///
+/// # Data Preservation
+///
+/// During wallet migration, the following Orchard-specific data must be preserved:
+///
+/// - **Nullifiers**: Essential to prevent double-spending of notes
+/// - **Commitments**: Required to identify and validate notes
+/// - **Encrypted Ciphertexts**: Contain encrypted note details
+/// - **Witness Data**: Required for spending notes (proving they exist in the tree)
+/// - **Proof Data**: Zero-knowledge proofs verifying transaction validity
+///
+/// Without this data, Orchard notes couldn't be properly identified or spent.
+///
+/// # Examples
+/// ```
+/// use zewif::{OrchardActionDescription, Position, u256, Blob, Data};
+///
+/// // Create a new Orchard action description
+/// let mut action = OrchardActionDescription::new();
+///
+/// // Set action properties
+/// let action_index = 0;
+/// let nullifier = u256::default(); // In practice, a real nullifier
+/// let commitment = u256::default(); // In practice, a real commitment
+///
+/// action.set_action_index(action_index);
+/// action.set_nullifier(nullifier);
+/// action.set_commitment(commitment);
+/// ```
 #[derive(Debug, Clone)]
 pub struct OrchardActionDescription {
     action_index: u32,

@@ -253,7 +253,7 @@ impl Add<Amount> for Amount {
     }
 }
 
-/// Adds an Amount to an Option<Amount>, propagating None
+/// Adds an Amount to an `Option<Amount>`, propagating None
 impl Add<Amount> for Option<Amount> {
     type Output = Self;
 
@@ -271,7 +271,7 @@ impl Sub<Amount> for Amount {
     }
 }
 
-/// Subtracts an Amount from an Option<Amount>, propagating None
+/// Subtracts an Amount from an `Option<Amount>`, propagating None
 impl Sub<Amount> for Option<Amount> {
     type Output = Self;
 

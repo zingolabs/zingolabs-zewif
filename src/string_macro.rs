@@ -10,7 +10,7 @@
 /// # use zewif::string;
 /// #
 /// // Define a type for address labels
-/// string!(AddressLabel);
+/// string!(AddressLabel, "A label for a Zcash address");
 ///
 /// // Use the generated type
 /// let label = AddressLabel::from("My Savings".to_string());
@@ -27,7 +27,8 @@
 /// other textual metadata associated with addresses and accounts.
 #[macro_export]
 macro_rules! string {
-    ($name:ident) => {
+    ($name:ident, $doc:expr) => {
+        #[doc = $doc]
         pub struct $name(String);
 
         impl Clone for $name {

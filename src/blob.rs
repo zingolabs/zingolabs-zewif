@@ -372,6 +372,11 @@ impl<const N: usize> Parse for Blob<N> {
     }
 }
 
+/// Type alias for Blob<20>
 pub type Blob20 = Blob<20>;
+
+/// Type alias for Blob<32>
 pub type Blob32 = Blob<32>;
+
+/// Type alias for Blob<64>
 pub type Blob64 = Blob<64>;

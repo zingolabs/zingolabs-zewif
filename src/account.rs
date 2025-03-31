@@ -10,8 +10,57 @@ use super::{
     sapling::SaplingSentOutput,
 };
 
-/// Logical grouping within a wallet. Each account can have its own set of
-/// addresses, transactions, and other metadata.
+/// A logical grouping of addresses and transaction history within a wallet.
+///
+/// `Account` represents a distinct subdivision of wallet functionality, similar to how
+/// bank accounts work within a single banking relationship. Each account can have its own set of
+/// addresses, relevant transactions, and sent output information that cannot be recovered
+/// from the blockchain.
+///
+/// # Zcash Concept Relation
+///
+/// In Zcash's hierarchical deterministic (HD) wallet structure:
+///
+/// - **Account Subdivision**: Follows the BIP-44/ZIP-32 HD hierarchy model (m/44'/133'/account'/*), 
+///   where each account represents a separate logical collection of funds
+/// - **Isolation**: Different accounts provide isolation for different purposes or users
+/// - **Consistent Identifiers**: Each account has a unique ARID (Apparently Random Identifier) 
+///   to maintain consistent identity across migrations
+/// - **ZIP-32 Integration**: When available, accounts may include ZIP-32 account indexes to 
+///   maintain the hierarchical derivation structure
+///
+/// # Data Preservation
+///
+/// During wallet migration, the following account data must be preserved:
+///
+/// - **Identity**: The unique account identifier and human-readable name
+/// - **Addresses**: All addresses associated with the account, including metadata
+/// - **Transaction Relationships**: Which transactions are relevant to this account
+/// - **Sent Output Information**: Data that can't be recovered from the blockchain, 
+///   such as outgoing transaction metadata
+/// - **Extended Key Information**: HD wallet derivation path information when available
+///
+/// # Examples
+/// ```no_run
+/// use zewif::{Account, Address, TxId, ProtocolAddress, TransparentAddress};
+/// 
+/// // Create a new account
+/// let mut account = Account::new();
+/// 
+/// // Set account properties
+/// account.set_name("Savings");
+/// account.set_zip32_account_id(0);
+/// 
+/// // In practice, you would have real addresses and transaction IDs
+/// // Create a transparent address (as an example)
+/// let t_addr = TransparentAddress::new("t1ExampleAddress".to_string());
+/// let address = Address::new(ProtocolAddress::Transparent(t_addr));
+/// let txid = TxId::from_bytes([0u8; 32]);
+/// 
+/// // Add the address and transaction to the account
+/// account.add_address(address);
+/// account.add_relevant_transaction(txid);
+/// ```
 #[derive(Clone)]
 pub struct Account {
     id: ARID,

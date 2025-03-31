@@ -23,7 +23,7 @@ use super::super::Data;
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::{parser::{Parse, Parser}, CompactSize};
+/// # use zewif::{parser::prelude::*, CompactSize};
 /// # use anyhow::Result;
 /// #
 /// // Implementing Parse for a custom type
@@ -89,7 +89,7 @@ pub trait Parse {
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::parser::{Parse, ParseWithParam, Parser};
+/// # use zewif::parser::prelude::*;
 /// # use anyhow::Result;
 /// #
 /// // A type that needs a parameter during parsing
@@ -162,7 +162,7 @@ pub trait ParseWithParam<P> {
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::parser::Parser;
+/// # use zewif::parser::prelude::*;
 /// # use anyhow::Result;
 /// #
 /// # fn example() -> Result<()> {

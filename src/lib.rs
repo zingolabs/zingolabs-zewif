@@ -1,3 +1,83 @@
+//! # Zcash Wallet Interchange Format (ZeWIF)
+//!
+//! `zewif` is a library that defines a standard data format for migrating wallet data
+//! between different Zcash wallet implementations. It provides a comprehensive set of
+//! types, tools, and utilities for serializing, deserializing, and manipulating Zcash
+//! wallet data in a way that preserves all critical information during migration.
+//!
+//! ## Core Features
+//!
+//! * **Complete Wallet Data Model**: Represents all aspects of a Zcash wallet including
+//!   accounts, addresses, transactions, and keys
+//! * **Multi-Protocol Support**: Handles all Zcash protocols (transparent, Sprout, Sapling, and Orchard)
+//! * **Binary Parsing Toolkit**: Provides tools for parsing and serializing binary wallet data
+//! * **Type-Safe Representation**: Uses Rust's type system to ensure correct handling of Zcash concepts
+//! * **Extensible Metadata**: Supports custom metadata through an attachments system
+//!
+//! ## Core Components
+//!
+//! The ZeWIF format is organized hierarchically:
+//!
+//! - [`ZewifTop`]: The root container holding wallets and global transaction data
+//!   - [`ZewifWallet`]: Individual wallet with accounts and network context
+//!     - [`Account`]: Logical grouping of addresses and transaction references
+//!       - [`Address`]: Individual addresses of various types (transparent, shielded, unified)
+//!   - [`Transaction`]: Complete transaction data (inputs, outputs, metadata)
+//!
+//! ## Protocol Support
+//!
+//! ZeWIF handles all Zcash protocol versions:
+//!
+//! - **Transparent**: Bitcoin-compatible public transactions ([`TransparentAddress`], [`TxIn`], [`TxOut`])
+//! - **Sprout**: Original shielded protocol ([`JoinSplitDescription`], [`SproutWitness`])
+//! - **Sapling**: Improved shielded protocol ([`sapling`] module, [`sapling::SaplingOutputDescription`], etc.)
+//! - **Orchard**: Latest shielded protocol ([`OrchardActionDescription`], [`OrchardSentOutput`])
+//!
+//! ## Integration Path
+//!
+//! This crate is part of a larger ecosystem:
+//!
+//! - `zewif`: Core library defining the interchange format (this crate)
+//! - `zmigrate`: Command-line tool for wallet migrations
+//! - `zewif-zcashd`: ZCashd-specific integration for migration
+//! - `zewif-zingo`: Zingo-specific integration for migration (future)
+//!
+//! ## Usage Examples
+//!
+//! ```no_run
+//! use zewif::{ZewifTop, ZewifWallet, Network, Account, Address};
+//!
+//! // Create a new ZeWIF container
+//! let mut zewif = ZewifTop::new();
+//!
+//! // Create a new wallet for the main network
+//! let mut wallet = ZewifWallet::new(Network::Main);
+//!
+//! // Add a new account to the wallet
+//! let mut account = Account::new();
+//! account.set_name("Default Account");
+//!
+//! // Add the account to the wallet and the wallet to the ZeWIF container
+//! wallet.add_account(account);
+//! zewif.add_wallet(wallet);
+//! ```
+//!
+//! ## Binary Parsing
+//!
+//! ZeWIF provides tools for parsing binary data:
+//!
+//! ```no_run
+//! use zewif::{parse, parser::prelude::*, TxId};
+//! use anyhow::Result;
+//!
+//! # fn example() -> Result<()> {
+//! # let mut parser = Parser::new(&[0u8; 32]);
+//! // Parse a transaction ID from a binary stream
+//! let txid = parse!(&mut parser, TxId, "Transaction ID")?;
+//! # Ok(())
+//! # }
+//! ```
+
 // Macros
 mod mod_use_macro;
 mod blob_macro;
@@ -62,6 +142,7 @@ mod_use!(zewif_wallet);
 
 use std::fmt::{self, Display, Formatter, Debug};
 
+#[doc(hidden)]
 pub struct NoQuotesDebugOption<'a, T>(pub &'a Option<T>);
 
 impl<T: Display> Debug for NoQuotesDebugOption<'_, T> {
@@ -73,6 +154,7 @@ impl<T: Display> Debug for NoQuotesDebugOption<'_, T> {
     }
 }
 
+#[doc(hidden)]
 pub struct DebugOption<'a, T>(&'a Option<T>);
 
 impl<T: Debug> Debug for DebugOption<'_, T> {

@@ -8,19 +8,14 @@
 ///
 /// ```
 /// # use zewif::blob;
-/// # 
-/// // Define a type for a 32-byte hash
-/// blob!(Hash32, 32);
-///
-/// // Use the generated type
-/// let data = [0u8; 32];
-/// let hash = Hash32::new(data);
+/// #
+/// blob!(TxId, 32, "A transaction identifier as a 32-byte hash");
 /// ```
 ///
 /// # Generated Functionality
 ///
-/// The generated type includes methods for creation, conversion, and inspection, 
-/// as well as implementations for common traits like `Parse`, `Debug`, `Clone`, 
+/// The generated type includes methods for creation, conversion, and inspection,
+/// as well as implementations for common traits like `Parse`, `Debug`, `Clone`,
 /// and various conversion traits to and from byte collections.
 ///
 /// The macro adds type safety and domain-specific semantics to otherwise
@@ -28,7 +23,8 @@
 /// Zcash protocol.
 #[macro_export]
 macro_rules! blob {
-    ($name:ident, $size:expr) => {
+    ($name:ident, $size:expr, $doc:expr) => {
+        #[doc = $doc]
         pub struct $name($crate::Blob<$size>);
 
         impl $name {

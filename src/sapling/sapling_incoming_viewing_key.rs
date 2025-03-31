@@ -43,4 +43,4 @@ use crate::blob;
 // // The key can be converted to a blob for storage or transmission
 // let as_blob: Blob<32> = ivk.into();
 // ```
-blob!(SaplingIncomingViewingKey, 32);
+blob!(SaplingIncomingViewingKey, 32, "A Sapling Incoming Viewing Key (IVK) for detecting incoming transactions.");

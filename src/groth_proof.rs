@@ -9,4 +9,5 @@ pub const GROTH_PROOF_SIZE: usize = 48 + 96 + 48;
 //
 // In Zcash, these proofs cryptographically verify transaction validity without revealing
 // private information like addresses or amounts.
-blob!(GrothProof, GROTH_PROOF_SIZE);
+
+blob!(GrothProof, GROTH_PROOF_SIZE, "A Groth16 zk-SNARK proof used in Zcash's Sapling and Orchard shielded transactions.");

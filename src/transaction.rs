@@ -19,7 +19,59 @@ pub enum TransactionStatus {
     Abandoned,
 }
 
-/// A transaction that can combine both transparent and shielded components.
+/// A Zcash transaction that can combine transparent and multiple shielded protocol components.
+///
+/// `Transaction` represents a complete Zcash transaction, which can include components from
+/// transparent Bitcoin-style inputs/outputs as well as from any of the three Zcash shielded
+/// protocols: Sprout, Sapling, and Orchard. The transaction structure preserves both blockchain
+/// data (block height, timestamp) and the detailed components needed to represent the
+/// transaction in a wallet format.
+///
+/// # Zcash Concept Relation
+///
+/// In Zcash:
+///
+/// - **Unified Transaction Format**: Transactions can seamlessly combine transparent and
+///   different shielded protocols in a single operation
+/// - **Multi-Protocol Support**: Zcash has evolved through multiple shielded protocols,
+///   and transactions can include components from any of them:
+///   - Transparent (Bitcoin-style public inputs/outputs)
+///   - Sprout (original shielded protocol using JoinSplits)
+///   - Sapling (improved shielded protocol with separate spends/outputs)
+///   - Orchard (latest shielded protocol using unified actions)
+/// - **Transaction Lifecycle**: Transactions go through stages (Pending, Confirmed, Failed, Abandoned)
+///   that represent their status on the blockchain
+///
+/// # Data Preservation
+///
+/// During wallet migration, the following transaction data must be preserved:
+///
+/// - **Identity**: The unique transaction ID (txid)
+/// - **Blockchain Context**: Block height, timestamp, block hash when available
+/// - **Status Information**: Whether the transaction is pending, confirmed, failed, or abandoned
+/// - **Raw Transaction**: Optional full binary transaction data
+/// - **Protocol-Specific Components**:
+///   - Transparent inputs and outputs
+///   - Sapling spends and outputs
+///   - Orchard actions
+///   - Sprout JoinSplits
+///
+/// # Examples
+/// ```no_run
+/// use zewif::{Transaction, TxId, TransactionStatus, BlockHeight};
+///
+/// // Create a new transaction with a transaction ID (in practice, a real ID)
+/// let txid = TxId::from_bytes([0u8; 32]); 
+/// let mut tx = Transaction::new(txid);
+///
+/// // Set transaction metadata
+/// tx.set_status(TransactionStatus::Confirmed);
+/// tx.set_mined_height(BlockHeight::from(1000000));
+///
+/// // In a real application, you would add transaction inputs and outputs
+/// // tx.add_input(...);
+/// // tx.add_output(...);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Transaction {
     /// The transaction id.
