@@ -53,7 +53,7 @@ impl Bip39Mnemonic {
 
 impl Parse for Bip39Mnemonic {
     fn parse(p: &mut Parser) -> Result<Self> {
-        let language = parse!(p, "language")?;
+        let language = Some(parse!(p, MnemonicLanguage, "language")?);
         let mnemonic = parse!(p, String, "mnemonic")?;
         let bip39_mnemonic = Self::new(mnemonic, language);
         Ok(bip39_mnemonic)
