@@ -1,6 +1,6 @@
-use crate::{parse, parser::prelude::*};
-
-use anyhow::Result;
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
+use anyhow::{Result, Context};
+use bc_envelope::prelude::*;
 use chrono::{SecondsFormat, TimeZone, Utc};
 
 /// A timestamp measured as seconds since the Unix epoch (1970-01-01T00:00:00Z).
@@ -24,8 +24,7 @@ use chrono::{SecondsFormat, TimeZone, Utc};
 ///
 /// # Examples
 /// ```
-/// use zewif::SecondsSinceEpoch;
-///
+/// # use zewif::SecondsSinceEpoch;
 /// // Create a timestamp for January 1, 2023
 /// let jan_1_2023 = SecondsSinceEpoch::from(1672531200u64);
 ///
@@ -50,8 +49,7 @@ impl SecondsSinceEpoch {
     ///
     /// # Examples
     /// ```
-    /// use zewif::SecondsSinceEpoch;
-    ///
+    /// # use zewif::SecondsSinceEpoch;
     /// let zero_time = SecondsSinceEpoch::from(0u64);
     /// assert!(zero_time.is_zero());
     ///
@@ -78,7 +76,7 @@ impl From<SecondsSinceEpoch> for u64 {
 }
 
 /// Creates a timestamp from a u32 seconds value
-/// 
+///
 /// This is useful for compatibility with 32-bit timestamp formats used in
 /// some parts of the Bitcoin/Zcash protocols.
 impl From<u32> for SecondsSinceEpoch {
@@ -113,3 +111,43 @@ impl std::fmt::Display for SecondsSinceEpoch {
         write!(f, "{:?}", self)
     }
 }
+
+impl From<SecondsSinceEpoch> for CBOR {
+    fn from(seconds: SecondsSinceEpoch) -> Self {
+        CBOR::from(seconds.0)
+    }
+}
+
+impl TryFrom<CBOR> for SecondsSinceEpoch {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self> {
+        cbor.try_into().map(SecondsSinceEpoch)
+    }
+}
+
+impl From<SecondsSinceEpoch> for Envelope {
+    fn from(seconds: SecondsSinceEpoch) -> Self {
+        Envelope::new(seconds.0)
+    }
+}
+
+impl TryFrom<Envelope> for SecondsSinceEpoch {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self> {
+        Ok(SecondsSinceEpoch(envelope.extract_subject().context("SecondsSinceEpoch")?))
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SecondsSinceEpoch {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let random_value: u64 = rand::Rng::gen_range(&mut rng, 0..=100);
+        SecondsSinceEpoch(random_value)
+    }
+}
+
+test_cbor_roundtrip!(SecondsSinceEpoch);
+test_envelope_roundtrip!(SecondsSinceEpoch);

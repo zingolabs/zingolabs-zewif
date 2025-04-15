@@ -1,6 +1,7 @@
-use super::u256;
-
-use super::IncrementalWitness;
+use super::{IncrementalWitness, u256};
+use crate::test_envelope_roundtrip;
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// The depth of the Sprout Merkle tree, set to 29 levels.
 ///
@@ -30,7 +31,7 @@ pub type SHA256Compress = u256;
 /// - **Anchors**: Root hashes of the note commitment tree at specific blockchain heights
 ///
 /// When spending a Sprout note, a zero-knowledge proof must demonstrate that the
-/// note exists in the tree at a specific anchor, without revealing which specific 
+/// note exists in the tree at a specific anchor, without revealing which specific
 /// commitment is being spent. The witness provides the necessary path information.
 ///
 /// # Data Preservation
@@ -48,3 +49,36 @@ pub type SHA256Compress = u256;
 /// This type is an alias for `IncrementalWitness<29, SHA256Compress>`, representing a
 /// witness for a Merkle tree with 29 levels using SHA-256 compression as the hash function.
 pub type SproutWitness = IncrementalWitness<INCREMENTAL_MERKLE_TREE_DEPTH, SHA256Compress>;
+
+#[cfg(test)]
+impl crate::RandomInstance for SproutWitness {
+    fn random() -> Self {
+        let tree = crate::IncrementalMerkleTree::random();
+        let filled: Vec<SHA256Compress> = (0..10).map(|_| SHA256Compress::random()).collect();
+        let cursor = crate::IncrementalMerkleTree::opt_random();
+        Self::with_fields(tree, filled, cursor)
+    }
+}
+
+impl From<SproutWitness> for Envelope {
+    fn from(value: SproutWitness) -> Self {
+        Envelope::new(value.tree().clone())
+            .add_type("SproutWitness")
+            .add_assertion("filled", value.filled().clone())
+            .add_optional_assertion("cursor", value.cursor().clone())
+    }
+}
+
+impl TryFrom<Envelope> for SproutWitness {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SproutWitness").context("SproutWitness")?;
+        let tree = envelope.try_as().context("tree")?;
+        let filled = envelope.extract_object_for_predicate("filled").context("filled")?;
+        let cursor = envelope.try_optional_object_for_predicate("cursor").context("cursor")?;
+        Ok(Self::with_fields(tree, filled, cursor))
+    }
+}
+
+test_envelope_roundtrip!(SproutWitness);

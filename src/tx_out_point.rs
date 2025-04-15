@@ -1,4 +1,7 @@
 use super::TxId;
+use crate::test_envelope_roundtrip;
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A reference to a specific output from a previous transaction in the Zcash blockchain.
 ///
@@ -26,8 +29,7 @@ use super::TxId;
 ///
 /// # Examples
 /// ```
-/// use zewif::{TxOutPoint, TxId};
-///
+/// # use zewif::{TxOutPoint, TxId};
 /// // Create a transaction ID (normally this would be a real hash)
 /// let txid = TxId::from_bytes([0; 32]);
 ///
@@ -37,7 +39,7 @@ use super::TxId;
 /// // Access the components
 /// assert_eq!(outpoint.index(), 1);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TxOutPoint {
     txid: TxId,
     index: u32,
@@ -52,8 +54,7 @@ impl TxOutPoint {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{TxOutPoint, TxId};
-    ///
+    /// # use zewif::{TxOutPoint, TxId};
     /// // Create a reference to the first output in a transaction
     /// let txid = TxId::from_bytes([0; 32]);
     /// let outpoint = TxOutPoint::new(txid, 0);
@@ -143,3 +144,32 @@ impl TxOutPoint {
         self.index = index;
     }
 }
+
+impl From<TxOutPoint> for Envelope {
+    fn from(value: TxOutPoint) -> Self {
+        Envelope::new(value.index)
+            .add_type("TxOutPoint")
+            .add_assertion("txid", value.txid)
+    }
+}
+
+impl TryFrom<Envelope> for TxOutPoint {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("TxOutPoint").context("TxOutPoint")?;
+        let index = envelope.extract_subject().context("index")?;
+        let txid = envelope.extract_object_for_predicate("txid").context("txid")?;
+
+        Ok(TxOutPoint::new(txid, index))
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for TxOutPoint {
+    fn random() -> Self {
+        Self { txid: TxId::random(), index: rand::random() }
+    }
+}
+
+test_envelope_roundtrip!(TxOutPoint);

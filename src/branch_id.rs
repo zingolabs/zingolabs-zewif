@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Result, bail};
+use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*};
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip};
 
 /// Identifies the consensus rules in effect for a particular block or transaction.
 ///
@@ -17,7 +18,7 @@ use crate::{parse, parser::prelude::*};
 /// - **Versioning**: Indicates which transaction format and validation rules apply
 /// - **Activation**: Determines which features are available based on block height
 ///
-/// Unlike most blockchains that use simple version numbers, Zcash uses unique 32-bit values 
+/// Unlike most blockchains that use simple version numbers, Zcash uses unique 32-bit values
 /// for each upgrade to ensure strong transaction replay protection between different
 /// network upgrade eras.
 ///
@@ -91,8 +92,79 @@ impl From<BranchId> for u32 {
 /// Parses a BranchId from a binary data stream
 impl Parse for BranchId {
     fn parse(p: &mut Parser) -> Result<Self> {
-        let consensus_branch_id = parse!(p, u32, "consensus branch ID")?;
+        let consensus_branch_id = parse!(p, u32, "BranchId")?;
         BranchId::try_from(consensus_branch_id)
-            .map_err(|_| anyhow::anyhow!("Unknown consensus branch ID: {}", consensus_branch_id))
+            .map_err(|_| anyhow::anyhow!("Unknown BranchId: {}", consensus_branch_id))
     }
 }
+
+impl From<BranchId> for String {
+    fn from(branch_id: BranchId) -> String {
+        match branch_id {
+            BranchId::Sprout => "Sprout".to_string(),
+            BranchId::Overwinter => "Overwinter".to_string(),
+            BranchId::Sapling => "Sapling".to_string(),
+            BranchId::Blossom => "Blossom".to_string(),
+            BranchId::Heartwood => "Heartwood".to_string(),
+            BranchId::Canopy => "Canopy".to_string(),
+            BranchId::Nu5 => "Nu5".to_string(),
+            BranchId::Nu6 => "Nu6".to_string(),
+            BranchId::ZFuture => "ZFuture".to_string(),
+        }
+    }
+}
+
+impl TryFrom<String> for BranchId {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "Sprout" => Ok(BranchId::Sprout),
+            "Overwinter" => Ok(BranchId::Overwinter),
+            "Sapling" => Ok(BranchId::Sapling),
+            "Blossom" => Ok(BranchId::Blossom),
+            "Heartwood" => Ok(BranchId::Heartwood),
+            "Canopy" => Ok(BranchId::Canopy),
+            "Nu5" => Ok(BranchId::Nu5),
+            "Nu6" => Ok(BranchId::Nu6),
+            "ZFuture" => Ok(BranchId::ZFuture),
+            _ => bail!("Invalid BranchId string: {}", value),
+        }
+    }
+}
+
+impl From<BranchId> for CBOR {
+    fn from(value: BranchId) -> Self {
+        String::from(value).into()
+    }
+}
+
+impl TryFrom<CBOR> for BranchId {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self> {
+        cbor.try_into_text()?.try_into()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for BranchId {
+    fn random() -> Self {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let random_value: u32 = rng.gen_range(0..=8);
+        match random_value {
+            0 => BranchId::Sprout,
+            1 => BranchId::Overwinter,
+            2 => BranchId::Sapling,
+            3 => BranchId::Blossom,
+            4 => BranchId::Heartwood,
+            5 => BranchId::Canopy,
+            6 => BranchId::Nu5,
+            7 => BranchId::Nu6,
+            _ => BranchId::ZFuture,
+        }
+    }
+}
+
+test_cbor_roundtrip!(BranchId);

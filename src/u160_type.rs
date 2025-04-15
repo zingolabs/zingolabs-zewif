@@ -1,8 +1,10 @@
-use anyhow::{Context, Result};
-
-use crate::parse;
-use super::parser::prelude::*;
 use super::Blob20;
+use super::parser::prelude::*;
+use crate::{parse, test_cbor_roundtrip, test_envelope_roundtrip};
+use anyhow::{Context, Error, Result, bail};
+use bc_envelope::prelude::*;
+
+pub const U160_SIZE: usize = 20;
 
 /// A 160-bit unsigned integer represented as a 20-byte array.
 ///
@@ -24,9 +26,8 @@ use super::Blob20;
 ///
 /// # Examples
 /// ```
-/// use zewif::{u160, Blob20};
-/// use anyhow::Result;
-///
+/// # use zewif::{u160, Blob20};
+/// # use anyhow::Result;
 /// # fn example() -> Result<()> {
 /// // Create a u160 from a byte slice (e.g., for a P2PKH address hash)
 /// let address_bytes = [
@@ -39,7 +40,7 @@ use super::Blob20;
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[allow(non_camel_case_types)]
-pub struct u160([u8; 20]);
+pub struct u160([u8; U160_SIZE]);
 
 impl u160 {
     /// Creates a new `u160` value from a 20-byte `Blob20`.
@@ -49,10 +50,9 @@ impl u160 {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{u160, Blob20};
-    ///
+    /// # use zewif::{u160, Blob20, U160_SIZE};
     /// // Create a u160 from a Blob20
-    /// let data = [0u8; 20];
+    /// let data = [0u8; U160_SIZE];
     /// let blob = Blob20::new(data);
     /// let value = u160::from_blob(blob);
     /// ```
@@ -67,12 +67,11 @@ impl u160 {
     ///
     /// # Examples
     /// ```
-    /// use zewif::u160;
-    /// use anyhow::Result;
-    ///
+    /// # use zewif::{u160, U160_SIZE};
+    /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// // Valid slice (exactly 20 bytes)
-    /// let valid_bytes = [0u8; 20];
+    /// let valid_bytes = [0u8; U160_SIZE];
     /// let value = u160::from_slice(&valid_bytes)?;
     ///
     /// // This would fail: incorrect length
@@ -91,14 +90,43 @@ impl u160 {
     }
 }
 
+impl TryFrom<&[u8]> for u160 {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        if bytes.len() != U160_SIZE {
+            bail!("Invalid data length: expected 20, got {}", bytes.len());
+        }
+        let mut a = [0u8; U160_SIZE];
+        a.copy_from_slice(bytes);
+        Ok(Self(a))
+    }
+}
+
+impl TryFrom<&[u8; U160_SIZE]> for u160 {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8; U160_SIZE]) -> Result<Self, Self::Error> {
+        Ok(Self(*bytes))
+    }
+}
+
+impl TryFrom<&Vec<u8>> for u160 {
+    type Error = Error;
+
+    fn try_from(bytes: &Vec<u8>) -> Result<Self, Self::Error> {
+        Self::try_from(bytes.as_slice())
+    }
+}
+
 impl AsRef<[u8]> for u160 {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl AsRef<[u8; 20]> for u160 {
-    fn as_ref(&self) -> &[u8; 20] {
+impl AsRef<[u8; U160_SIZE]> for u160 {
+    fn as_ref(&self) -> &[u8; U160_SIZE] {
         &self.0
     }
 }
@@ -147,3 +175,49 @@ impl Parse for u160 {
         Ok(Self(blob.into()))
     }
 }
+
+impl From<u160> for CBOR {
+    fn from(value: u160) -> Self {
+        CBOR::to_byte_string(value)
+    }
+}
+
+impl From<&u160> for CBOR {
+    fn from(value: &u160) -> Self {
+        CBOR::to_byte_string(value)
+    }
+}
+
+impl TryFrom<CBOR> for u160 {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        Self::try_from(&bytes)
+    }
+}
+
+impl From<u160> for Envelope {
+    fn from(value: u160) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for u160 {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for u160 {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        Self(bc_rand::rng_random_array(&mut rng))
+    }
+}
+
+test_cbor_roundtrip!(u160);
+test_envelope_roundtrip!(u160);

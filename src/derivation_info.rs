@@ -1,3 +1,8 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+
+use crate::{NonHardenedChildIndex, test_envelope_roundtrip};
+
 /// Hierarchical deterministic (HD) derivation information for wallet addresses.
 ///
 /// `DerivationInfo` captures the BIP-44/ZIP-32 derivation path components for
@@ -12,7 +17,7 @@
 /// ```text
 /// m / purpose' / coin_type' / account' / change / address_index
 /// ```
-/// 
+///
 /// Where:
 /// - `purpose'` is typically 44' for transparent or 32' for shielded
 /// - `coin_type'` is 133' for Zcash
@@ -30,13 +35,12 @@
 ///
 /// # Examples
 /// ```
-/// use zewif::{DerivationInfo, NonHardenedChildIndex};
-///
+/// # use zewif::{DerivationInfo, NonHardenedChildIndex};
 /// // Create derivation info for an external address (change = 0)
 /// // with index 5
 /// let change = NonHardenedChildIndex::from(0u32); // external
 /// let address_index = NonHardenedChildIndex::from(5u32);
-/// 
+///
 /// // We need a constructor to create DerivationInfo
 /// let derivation_info = DerivationInfo::new(change, address_index);
 ///
@@ -44,11 +48,11 @@
 /// assert_eq!(u32::from(derivation_info.change()), 0);
 /// assert_eq!(u32::from(derivation_info.address_index()), 5);
 /// ```
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DerivationInfo {
     /// The change level (0 = external addresses, 1 = internal/change addresses)
     change: NonHardenedChildIndex,
-    
+
     /// The address index at the specified change level
     address_index: NonHardenedChildIndex,
 }
@@ -62,8 +66,7 @@ impl DerivationInfo {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{DerivationInfo, NonHardenedChildIndex};
-    ///
+    /// # use zewif::{DerivationInfo, NonHardenedChildIndex};
     /// // Create derivation info for an external address (change = 0)
     /// // with index 5
     /// let change = NonHardenedChildIndex::from(0u32);
@@ -71,10 +74,7 @@ impl DerivationInfo {
     /// let derivation_info = DerivationInfo::new(change, address_index);
     /// ```
     pub fn new(change: NonHardenedChildIndex, address_index: NonHardenedChildIndex) -> Self {
-        Self {
-            change,
-            address_index,
-        }
+        Self { change, address_index }
     }
 
     /// Returns the change component of the derivation path.
@@ -102,43 +102,33 @@ impl DerivationInfo {
     }
 }
 
-/// A non-hardened index used in hierarchical deterministic wallet derivation paths.
-///
-/// Non-hardened indices allow public key derivation, enabling watch-only wallets
-/// to generate new addresses without having access to private keys. In BIP-44/ZIP-32
-/// paths, the last two components (change and address_index) are typically non-hardened.
-///
-/// # Zcash Concept Relation
-/// In Zcash HD wallet implementations:
-/// - Hardened indices are shown with an apostrophe (e.g., `44'`)
-/// - Non-hardened indices are shown without an apostrophe (e.g., `0` for external)
-///
-/// Non-hardened indices must be below 2^31 (0x80000000).
-///
-/// # Examples
-/// ```
-/// use zewif::NonHardenedChildIndex;
-///
-/// // Create from a u32 value
-/// let index = NonHardenedChildIndex::from(42u32);
-///
-/// // Convert back to u32 when needed
-/// let value: u32 = index.into();
-/// assert_eq!(value, 42);
-/// ```
-#[derive(Debug, Clone, Copy)]
-pub struct NonHardenedChildIndex(u32);
-
-/// Converts a u32 value to a NonHardenedChildIndex
-impl From<u32> for NonHardenedChildIndex {
-    fn from(value: u32) -> Self {
-        Self(value)
+impl From<DerivationInfo> for Envelope {
+    fn from(value: DerivationInfo) -> Self {
+        Envelope::new(value.change)
+            .add_type("DerivationInfo")
+            .add_assertion("address_index", value.address_index)
     }
 }
 
-/// Extracts the u32 value from a NonHardenedChildIndex
-impl From<NonHardenedChildIndex> for u32 {
-    fn from(value: NonHardenedChildIndex) -> Self {
-        value.0
+impl TryFrom<Envelope> for DerivationInfo {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("DerivationInfo").context("DerivationInfo")?;
+        let change = envelope.extract_subject().context("change")?;
+        let address_index = envelope.extract_object_for_predicate("address_index").context("address_index")?;
+        Ok(Self { change, address_index })
     }
 }
+
+#[cfg(test)]
+impl crate::RandomInstance for DerivationInfo {
+    fn random() -> Self {
+        Self {
+            change: NonHardenedChildIndex::random(),
+            address_index: NonHardenedChildIndex::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(DerivationInfo);

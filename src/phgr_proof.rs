@@ -1,4 +1,7 @@
-use anyhow::Result;
+use bc_envelope::prelude::*;
+use anyhow::{Result, Context};
+
+use crate::test_envelope_roundtrip;
 
 use super::{parse, parser::prelude::*};
 use super::Blob;
@@ -39,8 +42,7 @@ pub type CompressedG1 = Blob<33>;
 ///
 /// # Examples
 /// ```
-/// use zewif::{PHGRProof, Blob};
-///
+/// # use zewif::{PHGRProof, Blob};
 /// // Create a compressed G1 point (33 bytes)
 /// let g1_point = Blob::new([0u8; 33]);
 ///
@@ -159,3 +161,39 @@ impl Parse for PHGRProof {
         ))
     }
 }
+
+impl From<PHGRProof> for Envelope {
+    fn from(value: PHGRProof) -> Self {
+        Envelope::new(CBOR::to_byte_string(value.to_bytes()))
+            .add_type("PHGRProof")
+    }
+}
+
+impl TryFrom<Envelope> for PHGRProof {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("PHGRProof").context("PHGRProf")?;
+        let bytes = envelope.subject().try_byte_string().context("bytes")?;
+        let proof = parse!(buf = &bytes, PHGRProof, "PHGRProof")?;
+        Ok(proof)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for PHGRProof {
+    fn random() -> Self {
+        Self {
+            g_a: CompressedG1::random(),
+            g_a_prime: CompressedG1::random(),
+            g_b: CompressedG1::random(),
+            g_b_prime: CompressedG1::random(),
+            g_c: CompressedG1::random(),
+            g_c_prime: CompressedG1::random(),
+            g_k: CompressedG1::random(),
+            g_h: CompressedG1::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(PHGRProof);

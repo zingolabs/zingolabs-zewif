@@ -1,6 +1,11 @@
-use std::ops::{Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
+use std::ops::{
+    Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+};
 
+use bc_envelope::prelude::*;
 use anyhow::{Context, Result, bail};
+
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 use super::parser::prelude::*;
 
@@ -70,7 +75,6 @@ impl<const N: usize> Blob<N> {
     /// # Examples
     /// ```
     /// # use zewif::Blob;
-    /// #
     /// let data = [1, 2, 3, 4];
     /// let blob = Blob::new(data);
     /// ```
@@ -84,8 +88,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
-    ///
+    /// # use zewif::Blob;
     /// let blob = Blob::<32>::default();
     /// assert_eq!(blob.len(), 32);
     /// ```
@@ -100,8 +103,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
-    ///
+    /// # use zewif::Blob;
     /// let blob = Blob::<32>::default();
     /// assert!(!blob.is_empty());
     /// ```
@@ -113,8 +115,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
-    ///
+    /// # use zewif::Blob;
     /// let blob = Blob::<4>::new([1, 2, 3, 4]);
     /// let vec = blob.to_vec();
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
@@ -130,7 +131,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
+    /// # use zewif::Blob;
     ///
     /// let blob = Blob::<4>::new([1, 2, 3, 4]);
     /// let slice = blob.as_slice();
@@ -147,7 +148,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
+    /// # use zewif::Blob;
     ///
     /// let slice = &[1, 2, 3, 4];
     /// let blob = Blob::<4>::from_slice(slice).unwrap();
@@ -173,7 +174,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
+    /// # use zewif::Blob;
     ///
     /// let vec = vec![1, 2, 3, 4];
     /// let blob = Blob::<4>::from_vec(vec.clone()).unwrap();
@@ -191,7 +192,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
+    /// # use zewif::Blob;
     ///
     /// let hex = "01020304";
     /// let blob = Blob::<4>::from_hex(hex);
@@ -209,7 +210,7 @@ impl<const N: usize> Blob<N> {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Blob;
+    /// # use zewif::Blob;
     ///
     /// let mut blob = Blob::<4>::new([1, 2, 3, 4]);
     /// blob.reverse();
@@ -336,6 +337,12 @@ impl<const N: usize> From<&[u8]> for Blob<N> {
     }
 }
 
+impl<const N: usize> From<&[u8; N]> for Blob<N> {
+    fn from(data: &[u8; N]) -> Self {
+        Self::from_vec(data.to_vec()).unwrap()
+    }
+}
+
 /// Implementation of the `Parse` trait for fixed-size byte arrays.
 ///
 /// This allows `Blob<N>` to be directly parsed from a binary stream using the
@@ -380,3 +387,49 @@ pub type Blob32 = Blob<32>;
 
 /// Type alias for Blob<64>
 pub type Blob64 = Blob<64>;
+
+impl<const N: usize> From<Blob<N>> for CBOR {
+    fn from(data: Blob<N>) -> Self {
+        CBOR::to_byte_string(data)
+    }
+}
+
+impl<const N: usize> From<&Blob<N>> for CBOR {
+    fn from(data: &Blob<N>) -> Self {
+        CBOR::to_byte_string(data)
+    }
+}
+
+impl<const N: usize> TryFrom<CBOR> for Blob<N> {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        Blob::from_slice(&bytes)
+    }
+}
+
+impl<const N: usize> From<Blob<N>> for Envelope {
+    fn from(value: Blob<N>) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl<const N: usize> TryFrom<Envelope> for Blob<N> {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject().context("Blob")
+    }
+}
+
+#[cfg(test)]
+impl<const N: usize> crate::RandomInstance for Blob<N> {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        Self(bc_rand::rng_random_array(&mut rng))
+    }
+}
+
+test_cbor_roundtrip!(Blob32);
+test_envelope_roundtrip!(Blob32);

@@ -1,6 +1,7 @@
-use std::collections::HashMap;
-
-use crate::{Blob, Data, ReceiverType, ShieldedAddress, TransparentAddress};
+use bc_envelope::prelude::*;
+use std::collections::{HashMap, HashSet};
+use crate::{test_envelope_roundtrip, Blob, Data, ReceiverType, ShieldedAddress, TransparentAddress};
+use anyhow::Context;
 
 /// A multi-protocol Zcash address that can contain components from different Zcash protocols.
 ///
@@ -48,8 +49,7 @@ use crate::{Blob, Data, ReceiverType, ShieldedAddress, TransparentAddress};
 ///
 /// # Examples
 /// ```
-/// use zewif::{UnifiedAddress, TransparentAddress, ShieldedAddress, ReceiverType, Blob};
-///
+/// # use zewif::{UnifiedAddress, TransparentAddress, ShieldedAddress, ReceiverType, Blob};
 /// // Create a new unified address
 /// let mut ua = UnifiedAddress::new("u1exampleaddress".to_string());
 ///
@@ -77,33 +77,33 @@ use crate::{Blob, Data, ReceiverType, ShieldedAddress, TransparentAddress};
 /// assert!(receiver_types.contains(&ReceiverType::P2PKH));
 /// assert!(receiver_types.contains(&ReceiverType::Sapling));
 /// ```
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct UnifiedAddress {
     /// The full unified address string (starting with "u...")
     address: String,
-    
+
     /// The diversifier index used to derive this unified address
     /// This is typically an 11-byte value used in the address derivation process
     diversifier_index: Option<Blob<11>>,
-    
+
     /// The types of receivers contained in this unified address
-    receiver_types: Vec<ReceiverType>,
-    
+    receiver_types: HashSet<ReceiverType>,
+
     /// Map of receiver types to their component addresses
     /// This allows access to the individual addresses that make up the unified address
     component_addresses: HashMap<ReceiverType, String>,
-    
+
     /// Transparent component of this unified address (if present)
     transparent_component: Option<TransparentAddress>,
-    
+
     /// Sapling component of this unified address (if present)
     sapling_component: Option<ShieldedAddress>,
-    
+
     /// Orchard component raw data (if present)
     /// Since we don't have a dedicated OrchardAddress type yet,
     /// we store the raw data for future use
     orchard_component_data: Option<Data>,
-    
+
     /// HD derivation path if this address was derived using HD wallet techniques
     hd_derivation_path: Option<String>,
 }
@@ -129,7 +129,7 @@ impl UnifiedAddress {
         UnifiedAddress {
             address,
             diversifier_index: None,
-            receiver_types: Vec::new(),
+            receiver_types: HashSet::new(),
             component_addresses: HashMap::new(),
             transparent_component: None,
             sapling_component: None,
@@ -159,19 +159,17 @@ impl UnifiedAddress {
     }
 
     /// Get the list of receiver types contained in this unified address
-    pub fn receiver_types(&self) -> &[ReceiverType] {
+    pub fn receiver_types(&self) -> &HashSet<ReceiverType> {
         &self.receiver_types
     }
 
     /// Add a receiver type to this unified address
     pub fn add_receiver_type(&mut self, receiver_type: ReceiverType) {
-        if !self.receiver_types.contains(&receiver_type) {
-            self.receiver_types.push(receiver_type);
-        }
+        self.receiver_types.insert(receiver_type);
     }
 
     /// Set the receiver types for this unified address
-    pub fn set_receiver_types(&mut self, receiver_types: Vec<ReceiverType>) {
+    pub fn set_receiver_types(&mut self, receiver_types: HashSet<ReceiverType>) {
         self.receiver_types = receiver_types;
     }
 
@@ -182,10 +180,8 @@ impl UnifiedAddress {
 
     /// Add a component address for a specific receiver type
     pub fn add_component_address(&mut self, receiver_type: ReceiverType, address: String) {
-        self.component_addresses.insert(receiver_type.clone(), address);
-        if !self.receiver_types.contains(&receiver_type) {
-            self.receiver_types.push(receiver_type);
-        }
+        self.component_addresses.insert(receiver_type, address);
+        self.receiver_types.insert(receiver_type);
     }
 
     /// Get the transparent component of this unified address, if present
@@ -238,20 +234,79 @@ impl UnifiedAddress {
 
     /// Returns true if this unified address has a transparent component
     pub fn has_transparent_component(&self) -> bool {
-        self.transparent_component.is_some() || 
+        self.transparent_component.is_some() ||
         self.receiver_types.contains(&ReceiverType::P2PKH) ||
         self.receiver_types.contains(&ReceiverType::P2SH)
     }
 
     /// Returns true if this unified address has a sapling component
     pub fn has_sapling_component(&self) -> bool {
-        self.sapling_component.is_some() || 
+        self.sapling_component.is_some() ||
         self.receiver_types.contains(&ReceiverType::Sapling)
     }
 
     /// Returns true if this unified address has an orchard component
     pub fn has_orchard_component(&self) -> bool {
-        self.orchard_component_data.is_some() || 
+        self.orchard_component_data.is_some() ||
         self.receiver_types.contains(&ReceiverType::Orchard)
     }
 }
+
+impl From<UnifiedAddress> for Envelope {
+    fn from(value: UnifiedAddress) -> Self {
+        Envelope::new(value.address)
+            .add_type("UnifiedAddress")
+            .add_optional_assertion("diversifier_index", value.diversifier_index)
+            .add_assertion("receiver_types", value.receiver_types.sort_by_cbor_encoding()) // Deterministic ordering
+            .add_assertion("component_addresses", value.component_addresses)
+            .add_optional_assertion("transparent_component", value.transparent_component)
+            .add_optional_assertion("sapling_component", value.sapling_component)
+            .add_optional_assertion("orchard_component_data", value.orchard_component_data)
+            .add_optional_assertion("hd_derivation_path", value.hd_derivation_path)
+    }
+}
+
+impl TryFrom<Envelope> for UnifiedAddress {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("UnifiedAddress").context("UnifiedAddress")?;
+        let address = envelope.extract_subject().context("address")?;
+        let diversifier_index = envelope.try_optional_object_for_predicate("diversifier_index").context("diversifier_index")?;
+        let receiver_types = envelope.extract_object_for_predicate("receiver_types").context("receiver_types")?;
+        let component_addresses = envelope.extract_object_for_predicate("component_addresses").context("component_addresses")?;
+        let transparent_component = envelope.try_optional_object_for_predicate("transparent_component").context("transparent_component")?;
+        let sapling_component = envelope.try_optional_object_for_predicate("sapling_component").context("sapling_component")?;
+        let orchard_component_data = envelope.try_optional_object_for_predicate("orchard_component_data").context("orchard_component_data")?;
+        let hd_derivation_path = envelope.try_optional_object_for_predicate("hd_derivation_path").context("hd_derivation_path")?;
+
+        Ok(UnifiedAddress {
+            address,
+            diversifier_index,
+            receiver_types,
+            component_addresses,
+            transparent_component,
+            sapling_component,
+            orchard_component_data,
+            hd_derivation_path,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for UnifiedAddress {
+    fn random() -> Self {
+        Self {
+            address: String::random(),
+            diversifier_index: Blob::opt_random(),
+            receiver_types: HashSet::random(),
+            component_addresses: HashMap::random(),
+            transparent_component: TransparentAddress::opt_random(),
+            sapling_component: ShieldedAddress::opt_random(),
+            orchard_component_data: Data::opt_random(),
+            hd_derivation_path: String::opt_random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(UnifiedAddress);

@@ -1,4 +1,7 @@
 use super::{Blob, sapling::SaplingSpendingKey};
+use crate::test_envelope_roundtrip;
+use anyhow::{Context, bail};
+use bc_envelope::prelude::*;
 
 /// A spending key that provides full control over funds, enabling transaction creation
 /// and authorization for a specific address in a Zcash wallet.
@@ -26,8 +29,7 @@ use super::{Blob, sapling::SaplingSpendingKey};
 ///
 /// # Examples
 /// ```
-/// use zewif::{SpendingKey, Blob, sapling::SaplingSpendingKey, u256};
-///
+/// # use zewif::{SpendingKey, Blob, sapling::SaplingSpendingKey, u256};
 /// // Create a Sapling spending key
 /// let ask = u256::default();
 /// let nsk = u256::default();
@@ -39,7 +41,7 @@ use super::{Blob, sapling::SaplingSpendingKey};
 /// let raw_key_data = Blob::<32>::default();
 /// let raw_spending_key = SpendingKey::Raw(raw_key_data);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SpendingKey {
     /// Sapling protocol spending key with full cryptographic components
     Sapling(SaplingSpendingKey),
@@ -55,8 +57,7 @@ impl SpendingKey {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{SpendingKey, sapling::SaplingSpendingKey, u256};
-    ///
+    /// # use zewif::{SpendingKey, sapling::SaplingSpendingKey, u256};
     /// // Create a Sapling spending key
     /// let ask = u256::default();
     /// let nsk = u256::default();
@@ -79,8 +80,7 @@ impl SpendingKey {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{SpendingKey, Blob};
-    ///
+    /// # use zewif::{SpendingKey, Blob};
     /// // Create a raw key from 32 bytes of data
     /// let key_data = Blob::<32>::default();
     /// let raw_key = SpendingKey::new_raw(key_data);
@@ -89,3 +89,42 @@ impl SpendingKey {
         SpendingKey::Raw(key_data)
     }
 }
+
+impl From<SpendingKey> for Envelope {
+    fn from(value: SpendingKey) -> Self {
+        match value {
+            SpendingKey::Sapling(sapling_spending_key) => sapling_spending_key.into(),
+            SpendingKey::Raw(blob) => Envelope::new(CBOR::from(blob)),
+        }
+        .add_type("SpendingKey")
+    }
+}
+
+impl TryFrom<Envelope> for SpendingKey {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SpendingKey").context("SpendingKey")?;
+        let subject = envelope.subject();
+        if let Ok(sapling_spending_key) = SaplingSpendingKey::try_from(envelope.clone()) {
+            Ok(SpendingKey::Sapling(sapling_spending_key))
+        } else if let Ok(blob) = Blob::try_from(subject.clone()) {
+            Ok(SpendingKey::Raw(blob))
+        } else {
+            bail!("Invalid SpendingKey envelope: {}", envelope.format());
+        }
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SpendingKey {
+    fn random() -> Self {
+        if rand::random::<bool>() {
+            Self::Sapling(SaplingSpendingKey::random())
+        } else {
+            Self::Raw(Blob::random())
+        }
+    }
+}
+
+test_envelope_roundtrip!(SpendingKey);

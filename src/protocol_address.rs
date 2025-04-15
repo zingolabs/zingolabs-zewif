@@ -1,4 +1,6 @@
 use super::{ShieldedAddress, TransparentAddress, UnifiedAddress};
+use crate::test_envelope_roundtrip;
+use bc_envelope::prelude::*;
 
 /// A protocol-specific Zcash address representation without additional metadata.
 ///
@@ -14,10 +16,10 @@ use super::{ShieldedAddress, TransparentAddress, UnifiedAddress};
 ///   exposing all transaction details on the blockchain.
 ///
 /// - **Shielded addresses (z-prefixed)**: Use zero-knowledge proofs to encrypt
-///   transaction details. Originally included Sprout (legacy), now primarily 
+///   transaction details. Originally included Sprout (legacy), now primarily
 ///   Sapling (zs-prefixed) and Orchard (zo-prefixed) protocols.
 ///
-/// - **Unified addresses (u-prefixed)**: Introduced in NU5, these bundle multiple 
+/// - **Unified addresses (u-prefixed)**: Introduced in NU5, these bundle multiple
 ///   receiver types into a single address, allowing the sender's wallet to automatically
 ///   choose the most private protocol supported by both parties.
 ///
@@ -30,8 +32,7 @@ use super::{ShieldedAddress, TransparentAddress, UnifiedAddress};
 ///
 /// # Examples
 /// ```
-/// use zewif::{ProtocolAddress, TransparentAddress, ShieldedAddress, UnifiedAddress};
-///
+/// # use zewif::{ProtocolAddress, TransparentAddress, ShieldedAddress, UnifiedAddress};
 /// // Create a transparent address
 /// let t_addr = TransparentAddress::new("t1example");
 /// let t_protocol = ProtocolAddress::Transparent(t_addr);
@@ -52,14 +53,14 @@ use super::{ShieldedAddress, TransparentAddress, UnifiedAddress};
 /// assert!(s_protocol.as_string().starts_with("zs1"));
 /// assert!(u_protocol.as_string().starts_with("u1"));
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
     Transparent(TransparentAddress),
-    
+
     /// A shielded address (Z-address). This can include Sapling, Sprout, or Orchard formats.
     Shielded(ShieldedAddress),
-    
+
     /// A unified address (U-address) that contains multiple receiver types.
     /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
     Unified(Box<UnifiedAddress>),
@@ -96,7 +97,7 @@ impl ProtocolAddress {
             ProtocolAddress::Unified(addr) => addr.address().to_string(),
         }
     }
-    
+
     /// Returns the underlying shielded address, if available.
     ///
     /// This method returns the shielded address in one of two cases:
@@ -130,7 +131,7 @@ impl ProtocolAddress {
             _ => None,
         }
     }
-    
+
     /// Returns the underlying transparent address, if available.
     ///
     /// This method returns the transparent address in one of two cases:
@@ -164,7 +165,7 @@ impl ProtocolAddress {
             _ => None,
         }
     }
-    
+
     /// Returns the underlying unified address, if this is a unified address.
     ///
     /// # Returns
@@ -191,3 +192,44 @@ impl ProtocolAddress {
         }
     }
 }
+
+impl From<ProtocolAddress> for Envelope {
+    fn from(value: ProtocolAddress) -> Self {
+        match value {
+            ProtocolAddress::Transparent(addr) => addr.into(),
+            ProtocolAddress::Shielded(addr) => addr.into(),
+            ProtocolAddress::Unified(addr) => (*addr).into(),
+        }
+    }
+}
+
+impl TryFrom<Envelope> for ProtocolAddress {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        if envelope.has_type_envelope("TransparentAddress") {
+            Ok(ProtocolAddress::Transparent(envelope.try_into()?))
+        } else if envelope.has_type_envelope("ShieldedAddress") {
+            Ok(ProtocolAddress::Shielded(envelope.try_into()?))
+        } else if envelope.has_type_envelope("UnifiedAddress") {
+            Ok(ProtocolAddress::Unified(Box::new(envelope.try_into()?)))
+        } else {
+            Err(anyhow::anyhow!("Invalid ProtocolAddress type"))
+        }
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for ProtocolAddress {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let choice = rand::Rng::gen_range(&mut rng, 0..3);
+        match choice {
+            0 => ProtocolAddress::Transparent(TransparentAddress::random()),
+            1 => ProtocolAddress::Shielded(ShieldedAddress::random()),
+            _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
+        }
+    }
+}
+
+test_envelope_roundtrip!(ProtocolAddress);

@@ -1,8 +1,9 @@
+use super::{Blob32, parser::prelude::*};
+use crate::{parse, test_cbor_roundtrip, test_envelope_roundtrip};
 use anyhow::{Error, Result, bail};
+use bc_envelope::prelude::*;
 
-use crate::parse;
-use super::parser::prelude::*;
-use super::Blob32;
+pub const U256_SIZE: usize = 32;
 
 /// A 256-bit unsigned integer represented as a 32-byte array in little-endian byte order.
 ///
@@ -26,8 +27,7 @@ use super::Blob32;
 ///
 /// # Examples
 /// ```
-/// use zewif::u256;
-///
+/// # use zewif::u256;
 /// // Create a u256 from a hexadecimal string (common for block hashes)
 /// let block_hash = u256::from_hex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
 ///
@@ -39,7 +39,7 @@ use super::Blob32;
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[allow(non_camel_case_types)]
-pub struct u256([u8; 32]);
+pub struct u256([u8; U256_SIZE]);
 
 impl u256 {
     /// Creates a new `u256` value from a hexadecimal string.
@@ -50,8 +50,7 @@ impl u256 {
     ///
     /// # Examples
     /// ```
-    /// use zewif::u256;
-    ///
+    /// # use zewif::u256;
     /// // Bitcoin genesis block hash (note: not reversed in the input)
     /// let genesis_hash = u256::from_hex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
     /// ```
@@ -68,19 +67,19 @@ impl TryFrom<&[u8]> for u256 {
     type Error = Error;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() != 32 {
+        if bytes.len() != U256_SIZE {
             bail!("Invalid data length: expected 32, got {}", bytes.len());
         }
-        let mut a = [0u8; 32];
+        let mut a = [0u8; U256_SIZE];
         a.copy_from_slice(bytes);
         Ok(Self(a))
     }
 }
 
-impl TryFrom<&[u8; 32]> for u256 {
+impl TryFrom<&[u8; U256_SIZE]> for u256 {
     type Error = Error;
 
-    fn try_from(bytes: &[u8; 32]) -> Result<Self, Self::Error> {
+    fn try_from(bytes: &[u8; U256_SIZE]) -> Result<Self, Self::Error> {
         Ok(Self(*bytes))
     }
 }
@@ -99,8 +98,8 @@ impl AsRef<[u8]> for u256 {
     }
 }
 
-impl AsRef<[u8; 32]> for u256 {
-    fn as_ref(&self) -> &[u8; 32] {
+impl AsRef<[u8; U256_SIZE]> for u256 {
+    fn as_ref(&self) -> &[u8; U256_SIZE] {
         &self.0
     }
 }
@@ -148,3 +147,49 @@ impl Parse for u256 {
         Ok(Self(bytes))
     }
 }
+
+impl From<u256> for CBOR {
+    fn from(value: u256) -> Self {
+        CBOR::to_byte_string(value)
+    }
+}
+
+impl From<&u256> for CBOR {
+    fn from(value: &u256) -> Self {
+        CBOR::to_byte_string(value)
+    }
+}
+
+impl TryFrom<CBOR> for u256 {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        Self::try_from(&bytes)
+    }
+}
+
+impl From<u256> for Envelope {
+    fn from(value: u256) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for u256 {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for u256 {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        Self(bc_rand::rng_random_array(&mut rng))
+    }
+}
+
+test_cbor_roundtrip!(u256);
+test_envelope_roundtrip!(u256);

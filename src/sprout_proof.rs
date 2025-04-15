@@ -1,7 +1,8 @@
-use anyhow::Result;
-
-use super::{parse, parser::prelude::*};
 use super::{GrothProof, PHGRProof};
+use super::{parse, parser::prelude::*};
+use crate::test_envelope_roundtrip;
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
 
 /// A zero-knowledge proof for the legacy Sprout shielded protocol in Zcash.
 ///
@@ -17,7 +18,7 @@ use super::{GrothProof, PHGRProof};
 ///   These were the first zk-SNARKs used in Zcash, requiring the original "powers of tau"
 ///   trusted setup.
 ///
-/// - **Sprout with Groth16 (2018)**: During the Sapling upgrade, Zcash retrofitted the 
+/// - **Sprout with Groth16 (2018)**: During the Sapling upgrade, Zcash retrofitted the
 ///   more efficient Groth16 proving system to the Sprout protocol, allowing nodes to
 ///   validate both proof types.
 ///
@@ -36,8 +37,7 @@ use super::{GrothProof, PHGRProof};
 ///
 /// # Examples
 /// ```
-/// use zewif::{SproutProof, PHGRProof, GrothProof, Blob};
-///
+/// # use zewif::{SproutProof, PHGRProof, GrothProof, Blob};
 /// // Example compressed G1 point (33 bytes each)
 /// let g1_point = Blob::new([0u8; 33]);
 ///
@@ -70,3 +70,43 @@ impl ParseWithParam<bool> for SproutProof {
         }
     }
 }
+
+#[cfg(test)]
+impl crate::RandomInstance for SproutProof {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let a = rand::Rng::gen_range(&mut rng, 0..=1);
+        if a == 0 {
+            SproutProof::PHGRProof(PHGRProof::random())
+        } else {
+            SproutProof::GrothProof(GrothProof::random())
+        }
+    }
+}
+
+impl From<SproutProof> for Envelope {
+    fn from(value: SproutProof) -> Self {
+        match value {
+            SproutProof::PHGRProof(phgr) => phgr.into_envelope(),
+            SproutProof::GrothProof(groth) => groth.into_envelope(),
+        }
+        .add_type("SproutProof")
+    }
+}
+
+impl TryFrom<Envelope> for SproutProof {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SproutProof").context("SproutProof")?;
+        if let Ok(phgr) = PHGRProof::try_from(envelope.clone()) {
+            Ok(SproutProof::PHGRProof(phgr))
+        } else if let Ok(groth) = GrothProof::try_from(envelope.clone()) {
+            Ok(SproutProof::GrothProof(groth))
+        } else {
+            bail!("Invalid SproutProof envelope")
+        }
+    }
+}
+
+test_envelope_roundtrip!(SproutProof);

@@ -1,5 +1,9 @@
-use crate::impl_attachable;
-use super::{Anchor, Attachments, SproutProof, u256};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
+
+use crate::{Indexed, test_envelope_roundtrip};
+
+use super::{Anchor, SproutProof, u256};
 
 /// A structure for Sprout shielded transactions that can convert between transparent and shielded value.
 ///
@@ -34,8 +38,7 @@ use super::{Anchor, Attachments, SproutProof, u256};
 ///
 /// # Examples
 /// ```
-/// use zewif::{JoinSplitDescription, Anchor, SproutProof, PHGRProof, Blob, u256};
-///
+/// # use zewif::{JoinSplitDescription, Anchor, SproutProof, PHGRProof, Blob, u256};
 /// // Create components for a JoinSplit description
 /// let anchor = Anchor::default(); // In practice, this would be a real Merkle root
 /// let nullifiers = [u256::default(), u256::default()]; // Identifiers for spent notes
@@ -57,25 +60,39 @@ use super::{Anchor, Attachments, SproutProof, u256};
 ///     zkproof
 /// );
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct JoinSplitDescription {
+    index: usize,
+
     /// Merkle tree root (anchor) used in the zero-knowledge proof
     anchor: Anchor,
-    
+
     /// Nullifiers for the two input notes being spent (if any)
     nullifiers: [u256; 2],
-    
+
     /// Commitments to the two output notes being created (if any)
     commitments: [u256; 2],
-    
+
     /// Zero-knowledge proof validating the JoinSplit
     zkproof: SproutProof,
-    
+
     /// Additional metadata attachments for this JoinSplit
     attachments: Attachments,
 }
 
-impl_attachable!(JoinSplitDescription);
+bc_envelope::impl_attachable!(JoinSplitDescription);
+
+impl Indexed for JoinSplitDescription {
+    /// Returns the index of this JoinSplit description.
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Sets the index of this JoinSplit description.
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
 
 impl JoinSplitDescription {
     /// Creates a new JoinSplit description with the specified components.
@@ -91,13 +108,12 @@ impl JoinSplitDescription {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{JoinSplitDescription, Anchor, SproutProof, GrothProof, u256};
-    ///
+    /// # use zewif::{JoinSplitDescription, Anchor, SproutProof, GrothProof, u256};
     /// // Create components for a JoinSplit description
     /// let anchor = Anchor::default();
     /// let nullifiers = [u256::default(), u256::default()];
     /// let commitments = [u256::default(), u256::default()];
-    /// 
+    ///
     /// // Create a Groth proof for the JoinSplit
     /// let groth_bytes = [0u8; 192];
     /// let zkproof = SproutProof::GrothProof(GrothProof::new(groth_bytes));
@@ -117,6 +133,7 @@ impl JoinSplitDescription {
         zkproof: SproutProof,
     ) -> Self {
         Self {
+            index: 0,
             anchor,
             nullifiers,
             commitments,
@@ -181,3 +198,77 @@ impl JoinSplitDescription {
         &self.attachments
     }
 }
+
+#[cfg(test)]
+impl crate::RandomInstance for JoinSplitDescription {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            anchor: Anchor::random(),
+            nullifiers: [u256::random(), u256::random()],
+            commitments: [u256::random(), u256::random()],
+            zkproof: SproutProof::random(),
+            attachments: Attachments::default(),
+        }
+    }
+}
+
+impl From<JoinSplitDescription> for Envelope {
+    fn from(value: JoinSplitDescription) -> Self {
+        let e = Envelope::new(value.index)
+            .add_type("JoinSplitDescription")
+            .add_assertion("anchor", value.anchor)
+            .add_assertion("nullifiers", Vec::from(value.nullifiers))
+            .add_assertion("commitments", Vec::from(value.commitments))
+            .add_assertion("zkproof", value.zkproof);
+
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+impl TryFrom<Envelope> for JoinSplitDescription {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope
+            .check_type_envelope("JoinSplitDescription")
+            .context("type")?;
+        let index = envelope.extract_subject().context("index")?;
+        let anchor = envelope
+            .extract_object_for_predicate("anchor")
+            .context("anchor")?;
+
+        let nullifiers: Vec<u256> = envelope
+            .extract_object_for_predicate("nullifiers")
+            .context("nullifiers")?;
+        if nullifiers.len() != 2 {
+            bail!("Expected exactly 2 nullifiers, found {}", nullifiers.len());
+        }
+
+        let commitments: Vec<u256> = envelope
+            .extract_object_for_predicate("commitments")
+            .context("commitments")?;
+        if commitments.len() != 2 {
+            bail!(
+                "Expected exactly 2 commitments, found {}",
+                commitments.len()
+            );
+        }
+
+        let zkproof = envelope
+            .try_object_for_predicate("zkproof")
+            .context("zkproof")?;
+        let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
+
+        Ok(Self {
+            index,
+            anchor,
+            nullifiers: [nullifiers[0], nullifiers[1]],
+            commitments: [commitments[0], commitments[1]],
+            zkproof,
+            attachments,
+        })
+    }
+}
+
+test_envelope_roundtrip!(JoinSplitDescription);

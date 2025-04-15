@@ -1,9 +1,13 @@
-use std::{iter::Sum, ops::{Add, Mul, Neg, Sub}};
+use std::{
+    iter::Sum,
+    ops::{Add, Mul, Neg, Sub},
+};
 
 use anyhow::{Error, Result, anyhow, bail};
+use bc_envelope::prelude::*;
 
 use super::parser::prelude::*;
-use crate::{format_signed_zats_as_zec, parse};
+use crate::{format_signed_zats_as_zec, parse, test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// Number of zatoshis (zats) in 1 ZEC
 pub const COIN: u64 = 1_0000_0000;
@@ -37,9 +41,9 @@ pub const MAX_BALANCE: i64 = MAX_MONEY as i64;
 ///
 /// # Examples
 /// ```
-/// use zewif::Amount;
-/// use anyhow::Result;
-///
+/// # use zewif::Amount;
+/// # use anyhow::Result;
+/// #
 /// # fn example() -> Result<()> {
 /// // Create an amount of 1.5 ZEC (150,000,000 zatoshis)
 /// let amount = Amount::from_u64(150_000_000)?;
@@ -183,9 +187,9 @@ impl Amount {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Amount;
-    /// use anyhow::Result;
-    ///
+    /// # use zewif::Amount;
+    /// # use anyhow::Result;
+    /// #
     /// # fn example() -> Result<()> {
     /// // Sum several ZEC amounts
     /// let amounts = vec![
@@ -314,3 +318,50 @@ impl Mul<usize> for Amount {
             .and_then(|i| Amount::try_from(i).ok())
     }
 }
+
+impl From<Amount> for CBOR {
+    fn from(value: Amount) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl From<&Amount> for CBOR {
+    fn from(value: &Amount) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl TryFrom<CBOR> for Amount {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let value = i64::try_from(cbor)?;
+        Amount::try_from(value)
+    }
+}
+
+impl From<Amount> for Envelope {
+    fn from(value: Amount) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for Amount {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for Amount {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        let value = rand::Rng::gen_range(&mut rng, -MAX_BALANCE..=MAX_BALANCE);
+        Self(value)
+    }
+}
+
+test_cbor_roundtrip!(Amount);
+test_envelope_roundtrip!(Amount);

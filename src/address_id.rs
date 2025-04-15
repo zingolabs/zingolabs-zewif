@@ -34,13 +34,13 @@ use super::{Network, ProtocolAddress};
 ///
 /// # Examples
 /// ```
-/// use zewif::{AddressId, Network};
-/// use std::str::FromStr;
-///
+/// # use zewif::{AddressId, Network};
+/// # use std::str::FromStr;
+/// #
 /// // Create address IDs from address strings
 /// let transparent = AddressId::from_address_string("t1abcdef", Network::Main).unwrap();
 /// assert_eq!(transparent.protocol_type(), "transparent");
-/// 
+///
 /// // Parse from string representation with protocol prefix
 /// let sapling = AddressId::from_str("zs:zs1abcdef").unwrap();
 /// assert_eq!(sapling.protocol_type(), "sapling");
@@ -76,7 +76,7 @@ impl AddressId {
     /// #
     /// // Create a transparent protocol address
     /// let transparent = ProtocolAddress::Transparent(TransparentAddress::new("t1abcdef".to_string()));
-    /// 
+    ///
     /// // Convert to AddressId
     /// let addr_id = AddressId::from_protocol_address(&transparent);
     /// assert_eq!(addr_id.protocol_type(), "transparent");
@@ -124,7 +124,7 @@ impl AddressId {
     /// // Create an AddressId from a transparent address string
     /// let result = AddressId::from_address_string("t1abcdef", Network::Main);
     /// assert!(result.is_ok());
-    /// 
+    ///
     /// // Create an AddressId from a Sapling address string
     /// let result = AddressId::from_address_string("zs1abcdef", Network::Test);
     /// assert!(result.is_ok());
@@ -253,7 +253,7 @@ impl FromStr for AddressId {
 /// // Create test addresses and account IDs
 /// let addr1 = AddressId::Transparent("t1111".to_string());
 /// let addr2 = AddressId::Sapling("zs2222".to_string());
-/// 
+///
 /// // Create an account ID
 /// let account1 = u256::default();
 ///

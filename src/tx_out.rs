@@ -1,4 +1,7 @@
+use bc_envelope::prelude::*;
+use crate::{test_envelope_roundtrip, Indexed};
 use super::{Amount, Script};
+use anyhow::Context;
 
 /// A transparent transaction output in a Zcash transaction.
 ///
@@ -26,9 +29,8 @@ use super::{Amount, Script};
 ///
 /// # Examples
 /// ```
-/// use zewif::{TxOut, Amount, Script, Data};
-/// use anyhow::Result;
-///
+/// # use zewif::{TxOut, Amount, Script, Data};
+/// # use anyhow::Result;
 /// # fn example() -> Result<()> {
 /// // Create a script (typically a P2PKH script containing a public key hash)
 /// // Standard P2PKH format: OP_DUP(0x76), OP_HASH160(0xa9), pushbytes_20(0x14), <hash>, OP_EQUALVERIFY(0x88), OP_CHECKSIG(0xac)
@@ -46,10 +48,21 @@ use super::{Amount, Script};
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TxOut {
+    index: usize,
     value: Amount,
     script_pubkey: Script,
+}
+
+impl Indexed for TxOut {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
 }
 
 impl TxOut {
@@ -61,9 +74,8 @@ impl TxOut {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{TxOut, Amount, Script, Data};
-    /// use anyhow::Result;
-    ///
+    /// # use zewif::{TxOut, Amount, Script, Data};
+    /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// // Create a simple script (normally this would be a P2PKH or P2SH script)
     /// let script_bytes = vec![0x76, 0xa9, 0x14, /* pubkey hash would go here */];
@@ -77,6 +89,7 @@ impl TxOut {
     /// ```
     pub fn new(value: Amount, script_pubkey: Script) -> Self {
         Self {
+            index: 0, // Default index, can be set later
             value,
             script_pubkey,
         }
@@ -193,3 +206,39 @@ impl TxOut {
         self.script_pubkey = script_pubkey;
     }
 }
+
+impl From<TxOut> for Envelope {
+    fn from(value: TxOut) -> Self {
+        Envelope::new(value.index)
+            .add_type("TxOut")
+            .add_assertion("value", value.value)
+            .add_assertion("script_pubkey", value.script_pubkey)
+    }
+}
+
+impl TryFrom<Envelope> for TxOut {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("TxOut").context("TxOut")?;
+        let index = envelope.extract_subject().context("index")?;
+        let value = envelope.extract_object_for_predicate("value").context("value")?;
+        let script_pubkey = envelope.extract_object_for_predicate("script_pubkey").context("script_pubkey")?;
+        let mut tx_out = TxOut::new(value, script_pubkey);
+        tx_out.set_index(index);
+        Ok(tx_out)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for TxOut {
+    fn random() -> Self {
+        Self {
+            index: usize::random(),
+            value: Amount::random(),
+            script_pubkey: Script::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(TxOut);

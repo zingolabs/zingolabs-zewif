@@ -1,4 +1,7 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
+use bc_envelope::prelude::*;
+
+use crate::test_envelope_roundtrip;
 
 use super::u256;
 
@@ -34,8 +37,7 @@ use super::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::{IncrementalMerkleTree, u256};
-///
+/// # use zewif::{IncrementalMerkleTree, u256};
 /// // Create a new empty incremental Merkle tree
 /// let mut tree = IncrementalMerkleTree::new();
 ///
@@ -49,10 +51,10 @@ use super::{parse, parser::prelude::*};
 pub struct IncrementalMerkleTree {
     /// The left child at the current insertion point (None if empty)
     left: Option<u256>,
-    
+
     /// The right child at the current insertion point (None if empty)
     right: Option<u256>,
-    
+
     /// Parent hashes at each level above the current insertion point
     parents: Vec<Option<u256>>,
 }
@@ -64,19 +66,14 @@ impl IncrementalMerkleTree {
     ///
     /// # Examples
     /// ```
-    /// use zewif::IncrementalMerkleTree;
-    ///
+    /// # use zewif::IncrementalMerkleTree;
     /// let tree = IncrementalMerkleTree::new();
     /// assert!(tree.left().is_none());
     /// assert!(tree.right().is_none());
     /// assert!(tree.parents().is_empty());
     /// ```
     pub fn new() -> Self {
-        Self {
-            left: None,
-            right: None,
-            parents: Vec::new(),
-        }
+        Self { left: None, right: None, parents: Vec::new() }
     }
 
     /// Creates an incremental Merkle tree with specified field values.
@@ -92,8 +89,7 @@ impl IncrementalMerkleTree {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{IncrementalMerkleTree, u256};
-    ///
+    /// # use zewif::{IncrementalMerkleTree, u256};
     /// // Create a tree with specific values
     /// let left = Some(u256::default());
     /// let right = Some(u256::default());
@@ -101,12 +97,12 @@ impl IncrementalMerkleTree {
     ///
     /// let tree = IncrementalMerkleTree::with_fields(left, right, parents);
     /// ```
-    pub fn with_fields(left: Option<u256>, right: Option<u256>, parents: Vec<Option<u256>>) -> Self {
-        Self {
-            left,
-            right,
-            parents,
-        }
+    pub fn with_fields(
+        left: Option<u256>,
+        right: Option<u256>,
+        parents: Vec<Option<u256>>,
+    ) -> Self {
+        Self { left, right, parents }
     }
 
     /// Returns the left child at the current insertion point.
@@ -181,3 +177,57 @@ impl Parse for IncrementalMerkleTree {
         Ok(Self::with_fields(left, right, parents))
     }
 }
+
+impl From<IncrementalMerkleTree> for Envelope {
+    fn from(value: IncrementalMerkleTree) -> Self {
+        let parents: Vec<CBOR> = value
+            .parents
+            .iter()
+            .map(|parent| match parent {
+                Some(u) => CBOR::from(u),
+                None => CBOR::null(),
+            })
+            .collect();
+        Envelope::new(CBOR::from(parents))
+            .add_type("IncrementalMerkleTree")
+            .add_optional_assertion("left", value.left)
+            .add_optional_assertion("right", value.right)
+    }
+}
+
+impl TryFrom<Envelope> for IncrementalMerkleTree {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("IncrementalMerkleTree").context("IncrementalMerkleTree")?;
+        let left: Option<u256> = envelope.extract_optional_object_for_predicate("left").context("left")?;
+        let right: Option<u256> = envelope.extract_optional_object_for_predicate("right").context("right")?;
+        let parents = envelope.subject()
+            .try_leaf().context("leaf")?
+            .try_into_array().context("parents array")?;
+        let parents: Result<Vec<Option<u256>>> = parents
+            .into_iter()
+            .map(|parent| {
+                if parent.is_null() {
+                    Ok(None)
+                } else {
+                    parent.try_into().map(Some)
+                }
+            })
+            .collect();
+        let parents = parents.context("parents")?;
+        Ok(Self::with_fields(left, right, parents))
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for IncrementalMerkleTree {
+    fn random() -> Self {
+        let left = u256::opt_random();
+        let right = u256::opt_random();
+        let parents = vec![Some(u256::random()), None];
+        Self::with_fields(left, right, parents)
+    }
+}
+
+test_envelope_roundtrip!(IncrementalMerkleTree);

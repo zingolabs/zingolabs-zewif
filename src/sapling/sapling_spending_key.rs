@@ -1,3 +1,8 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+
+use crate::test_envelope_roundtrip;
+
 use super::super::{NoQuotesDebugOption, u256};
 use super::SaplingExpandedSpendingKey;
 
@@ -25,7 +30,7 @@ use super::SaplingExpandedSpendingKey;
 /// This structure preserves the complete cryptographic material needed to spend funds,
 /// including both the core components (ask, nsk, ovk) and the optional HD wallet
 /// components needed for key derivation and address generation.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SaplingSpendingKey {
     /// The expanded spending key containing core cryptographic components
     pub expsk: SaplingExpandedSpendingKey,
@@ -146,5 +151,53 @@ impl std::fmt::Debug for SaplingSpendingKey {
     }
 }
 
-// TODO: Add binary serialization/deserialization after establishing proper requirements
-// and test vectors. Binary compatibility is critical and needs thorough validation.
+impl From<SaplingSpendingKey> for Envelope {
+    fn from(value: SaplingSpendingKey) -> Self {
+        Envelope::new(value.expsk)
+            .add_type("SaplingSpendingKey")
+            .add_optional_assertion("depth", value.depth)
+            .add_optional_assertion("parent_fingerprint", value.parent_fingerprint)
+            .add_optional_assertion("child_index", value.child_index)
+            .add_optional_assertion("chain_code", value.chain_code)
+            .add_optional_assertion("dk", value.dk)
+    }
+}
+
+impl TryFrom<Envelope> for SaplingSpendingKey {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingSpendingKey").context("SaplingSpendingKey")?;
+        let expsk = envelope.try_as().context("expsk")?;
+        let depth = envelope.extract_optional_object_for_predicate("depth").context("depth")?;
+        let parent_fingerprint = envelope.extract_optional_object_for_predicate("parent_fingerprint").context("parent_fingerprint")?;
+        let child_index = envelope.extract_optional_object_for_predicate("child_index").context("child_index")?;
+        let chain_code = envelope.extract_optional_object_for_predicate("chain_code").context("chain_code")?;
+        let dk = envelope.extract_optional_object_for_predicate("dk").context("dk")?;
+
+        Ok(SaplingSpendingKey {
+            expsk,
+            depth,
+            parent_fingerprint,
+            child_index,
+            chain_code,
+            dk,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SaplingSpendingKey {
+    fn random() -> Self {
+        Self {
+            expsk: SaplingExpandedSpendingKey::random(),
+            depth: u8::opt_random(),
+            parent_fingerprint: u32::opt_random(),
+            child_index: u32::opt_random(),
+            chain_code: u256::opt_random(),
+            dk: u256::opt_random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(SaplingSpendingKey);

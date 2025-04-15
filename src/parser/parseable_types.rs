@@ -4,7 +4,7 @@
 //! collections, and other standard types used throughout the ZeWIF codebase. The
 //! implementations here serve as the foundation for parsing complex Zcash data structures.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context, Result, bail};
 
@@ -225,6 +225,24 @@ where
 {
     fn parse(p: &mut Parser) -> Result<Self> {
         parse_hashmap(p)
+    }
+}
+
+pub fn parse_hashset<T>(p: &mut Parser) -> Result<HashSet<T>>
+where
+    T: Parse + Eq + std::hash::Hash,
+{
+    let length = *parse!(p, CompactSize, "set length")?;
+    let mut items = HashSet::with_capacity(length);
+    for _ in 0..length {
+        items.insert(parse!(p, "set item")?);
+    }
+    Ok(items)
+}
+
+impl<T: Parse + Eq + std::hash::Hash> Parse for HashSet<T> {
+    fn parse(p: &mut Parser) -> Result<Self> {
+        parse_hashset(p)
     }
 }
 

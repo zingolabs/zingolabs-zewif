@@ -1,7 +1,10 @@
-use crate::impl_attachable;
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
-use super::SaplingWitness;
-use super::super::{Anchor, Attachments, Position, Blob, Data, u256};
+use crate::{test_envelope_roundtrip, Indexed};
+
+use super::super::{Blob, Data, Position, u256};
+use super::SaplingAnchorWitness;
 
 /// A fixed-size blob type for Sapling encrypted ciphertexts (580 bytes).
 pub type SaplingEncCiphertext = Blob<580>;
@@ -9,7 +12,7 @@ pub type SaplingEncCiphertext = Blob<580>;
 /// A description of a received output in a Sapling shielded transaction.
 ///
 /// `SaplingOutputDescription` represents a received note in the Sapling shielded pool,
-/// containing both the blockchain-published components (commitments, ciphertexts) and 
+/// containing both the blockchain-published components (commitments, ciphertexts) and
 /// wallet-specific data needed to later spend the note (witness data, position information).
 ///
 /// # Zcash Concept Relation
@@ -34,13 +37,12 @@ pub type SaplingEncCiphertext = Blob<580>;
 ///
 /// # Examples
 /// ```
-/// use zewif::{sapling::{SaplingOutputDescription, SaplingEncCiphertext}, Position, u256, Data};
-///
+/// # use zewif::{sapling::{SaplingOutputDescription, SaplingEncCiphertext}, Position, u256, Data, Indexed};
 /// // Create a new output description
 /// let mut output = SaplingOutputDescription::new();
 ///
 /// // Set the output index in the transaction
-/// output.set_output_index(0);
+/// output.set_index(0);
 ///
 /// // Set the note commitment that appears on the blockchain
 /// let commitment = u256::default(); // In practice, this would be the actual commitment
@@ -62,10 +64,10 @@ pub type SaplingEncCiphertext = Blob<580>;
 /// let memo_data = Data::from_vec(vec![0u8; 32]); // In practice, this would be actual memo content
 /// output.set_memo(Some(memo_data));
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SaplingOutputDescription {
     /// Index of this output in the transaction's list of Sapling outputs
-    output_index: u32,
+    index: usize,
     /// The note commitment visible on the blockchain
     commitment: u256,
     /// Ephemeral key for the encrypted note
@@ -77,12 +79,22 @@ pub struct SaplingOutputDescription {
     /// Position of this note commitment in the note commitment tree
     note_commitment_tree_position: Position,
     /// Witness data proving inclusion in the note commitment tree
-    witness: Option<(Anchor, SaplingWitness)>,
+    witness: Option<SaplingAnchorWitness>,
     /// Additional metadata attachments for this output
     attachments: Attachments,
 }
 
-impl_attachable!(SaplingOutputDescription);
+bc_envelope::impl_attachable!(SaplingOutputDescription);
+
+impl Indexed for SaplingOutputDescription {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
 
 impl SaplingOutputDescription {
     /// Creates a new empty Sapling output description.
@@ -96,13 +108,12 @@ impl SaplingOutputDescription {
     ///
     /// # Examples
     /// ```
-    /// use zewif::sapling::SaplingOutputDescription;
-    /// 
+    /// # use zewif::sapling::SaplingOutputDescription;
     /// let output = SaplingOutputDescription::new();
     /// ```
     pub fn new() -> Self {
         Self {
-            output_index: 0,
+            index: 0,
             commitment: u256::default(),
             ephemeral_key: u256::default(),
             enc_ciphertext: SaplingEncCiphertext::default(),
@@ -114,11 +125,6 @@ impl SaplingOutputDescription {
     }
 
     // Getters
-    
-    /// Returns the index of this output in the transaction's list of Sapling outputs.
-    pub fn output_index(&self) -> u32 {
-        self.output_index
-    }
 
     /// Returns a reference to the note commitment.
     ///
@@ -167,16 +173,11 @@ impl SaplingOutputDescription {
     /// The witness is a cryptographic proof that the note commitment exists in the
     /// note commitment tree at a particular position. It's required when spending
     /// the note in a future transaction.
-    pub fn witness(&self) -> Option<&(Anchor, SaplingWitness)> {
+    pub fn witness(&self) -> Option<&SaplingAnchorWitness> {
         self.witness.as_ref()
     }
 
     // Setters
-    
-    /// Sets the index of this output in the transaction's list of Sapling outputs.
-    pub fn set_output_index(&mut self, output_index: u32) {
-        self.output_index = output_index;
-    }
 
     /// Sets the note commitment.
     pub fn set_commitment(&mut self, commitment: u256) {
@@ -204,7 +205,69 @@ impl SaplingOutputDescription {
     }
 
     /// Sets the witness data.
-    pub fn set_witness(&mut self, witness: Option<(Anchor, SaplingWitness)>) {
+    pub fn set_witness(&mut self, witness: Option<SaplingAnchorWitness>) {
         self.witness = witness;
     }
 }
+
+impl From<SaplingOutputDescription> for Envelope {
+    fn from(value: SaplingOutputDescription) -> Self {
+        let e = Envelope::new(value.index)
+            .add_type("SaplingOutputDescription")
+            .add_assertion("commitment", value.commitment)
+            .add_assertion("ephemeral_key", value.ephemeral_key)
+            .add_assertion("enc_ciphertext", value.enc_ciphertext)
+            .add_optional_assertion("memo", value.memo)
+            .add_assertion(
+                "note_commitment_tree_position",
+                value.note_commitment_tree_position,
+            )
+            .add_optional_assertion("witness", value.witness);
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+impl TryFrom<Envelope> for SaplingOutputDescription {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingOutputDescription").context("SaplingOutputDescription")?;
+        let index = envelope.extract_subject().context("index")?;
+        let commitment = envelope.try_object_for_predicate("commitment").context("commitment")?;
+        let ephemeral_key = envelope.try_object_for_predicate("ephemeral_key").context("ephemeral_key")?;
+        let enc_ciphertext = envelope.try_object_for_predicate("enc_ciphertext").context("enc_ciphertext")?;
+        let memo = envelope.extract_optional_object_for_predicate("memo").context("memo")?;
+        let note_commitment_tree_position =
+            envelope.extract_object_for_predicate("note_commitment_tree_position").context("note_commitment_tree_position")?;
+        let witness = envelope.try_optional_object_for_predicate("witness").context("witness")?;
+        let attachments = Attachments::try_from_envelope(&envelope)?;
+        Ok(SaplingOutputDescription {
+            index,
+            commitment,
+            ephemeral_key,
+            enc_ciphertext,
+            memo,
+            note_commitment_tree_position,
+            witness,
+            attachments,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SaplingOutputDescription {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            commitment: u256::random(),
+            ephemeral_key: u256::random(),
+            enc_ciphertext: SaplingEncCiphertext::random(),
+            memo: Data::opt_random_with_size(64),
+            note_commitment_tree_position: Position::random(),
+            witness: SaplingAnchorWitness::opt_random(),
+            attachments: Attachments::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(SaplingOutputDescription);

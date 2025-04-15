@@ -1,6 +1,8 @@
-use super::Script;
-
-use super::TxOutPoint;
+use super::{Script, TxOutPoint};
+use crate::Indexed;
+use crate::test_envelope_roundtrip;
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A transparent transaction input in a Zcash transaction.
 ///
@@ -29,8 +31,7 @@ use super::TxOutPoint;
 ///
 /// # Examples
 /// ```
-/// use zewif::{TxIn, TxOutPoint, TxId, Script, Data};
-///
+/// # use zewif::{TxIn, TxOutPoint, TxId, Script, Data};
 /// // Create a TxOutPoint referencing output #1 of a transaction
 /// let txid = TxId::from_bytes([0; 32]);
 /// let prev_out = TxOutPoint::new(txid, 1);
@@ -48,12 +49,25 @@ use super::TxOutPoint;
 /// assert!(!tx_in.script_sig().is_empty());
 /// assert_eq!(tx_in.sequence(), 0xffffffff);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TxIn {
+    index: usize,
     previous_output: TxOutPoint,
     /// Script signature for unlocking the previous output.
     script_sig: Script,
     sequence: u32,
+}
+
+impl Indexed for TxIn {
+    /// Returns the index of the output being spent.
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    /// Sets the index of the output being spent.
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
 }
 
 impl TxIn {
@@ -77,6 +91,7 @@ impl TxIn {
     /// ```
     pub fn new(previous_output: TxOutPoint, script_sig: Script, sequence: u32) -> Self {
         Self {
+            index: 0, // Default index, can be set later
             previous_output,
             script_sig,
             sequence,
@@ -138,7 +153,7 @@ impl TxIn {
     /// # let txid = TxId::from_bytes([0; 32]);
     /// # let prev_out = TxOutPoint::new(txid, 0);
     /// # let script_sig = Script::from(Data::from_vec(vec![0x00]));
-    /// let tx_in = TxIn::new(prev_out, script_sig, 0xfffffffe); // Using a non-max sequence
+    /// let tx_in = TxIn::new(prev_out, script_sig, 0xfffffffe);
     ///
     /// assert_eq!(tx_in.sequence(), 0xfffffffe);
     /// ```
@@ -223,3 +238,42 @@ impl TxIn {
         self.sequence = sequence;
     }
 }
+
+impl From<TxIn> for Envelope {
+    fn from(value: TxIn) -> Self {
+        Envelope::new(value.index)
+            .add_type("TxIn")
+            .add_assertion("previous_output", value.previous_output)
+            .add_assertion("script_sig", value.script_sig)
+            .add_assertion("sequence", value.sequence)
+    }
+}
+
+impl TryFrom<Envelope> for TxIn {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("TxIn").context("TxIn")?;
+        let index = envelope.extract_subject().context("index")?;
+        let previous_output = envelope.try_object_for_predicate("previous_output").context("previous_output")?;
+        let script_sig = envelope.extract_object_for_predicate("script_sig").context("script_sig")?;
+        let sequence = envelope.extract_object_for_predicate("sequence").context("sequence")?;
+        let mut tx_in = TxIn::new(previous_output, script_sig, sequence);
+        tx_in.set_index(index);
+        Ok(tx_in)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for TxIn {
+    fn random() -> Self {
+        Self {
+            index: usize::random(),
+            previous_output: TxOutPoint::random(),
+            script_sig: Script::random(),
+            sequence: u32::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(TxIn);

@@ -39,14 +39,13 @@ use crate::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::IntID;
-///
+/// # use zewif::IntID;
 /// // Create an ID from a u32 value
 /// let id = IntID::new(42);
-/// 
+///
 /// // IDs are displayed in hexadecimal format with 0x prefix and leading zeros
 /// assert_eq!(format!("{}", id), "0x0000002a");
-/// 
+///
 /// // Convert back to raw u32 when needed
 /// let raw_id: u32 = id.into();
 /// assert_eq!(raw_id, 42);
@@ -62,8 +61,7 @@ impl IntID {
     ///
     /// # Examples
     /// ```
-    /// use zewif::IntID;
-    ///
+    /// # use zewif::IntID;
     /// let id = IntID::new(123);
     /// ```
     pub const fn new(id: u32) -> Self {
@@ -80,8 +78,7 @@ impl IntID {
     ///
     /// # Examples
     /// ```
-    /// use zewif::IntID;
-    ///
+    /// # use zewif::IntID;
     /// let id = IntID::new(123);
     /// assert_eq!(id.value(), 123);
     /// ```

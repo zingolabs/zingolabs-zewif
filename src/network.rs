@@ -1,4 +1,7 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
+
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// Represents a Zcash network environment (mainnet, testnet, or regtest).
 ///
@@ -18,15 +21,14 @@ use anyhow::{Result, bail};
 ///
 /// # Data Preservation
 /// The `Network` value is critical during wallet migration to ensure addresses and
-/// transactions are reconstructed for the correct network. Address formats differ 
-/// between networks, and migrating a wallet to an incorrect network would render 
+/// transactions are reconstructed for the correct network. Address formats differ
+/// between networks, and migrating a wallet to an incorrect network would render
 /// it unusable.
 ///
 /// # Examples
 /// In the ZeWIF format, the Network value is stored at the wallet level:
 /// ```
-/// use zewif::{ZewifWallet, Network};
-///
+/// # use zewif::{ZewifWallet, Network};
 /// // Wallet on the main Zcash network
 /// let network = Network::Main;
 ///
@@ -42,11 +44,11 @@ pub enum Network {
     /// Zcash Mainnet.
     /// The production network where ZEC with actual value is transferred.
     Main,
-    
+
     /// Zcash Testnet.
     /// A public testing network with worthless coins for development.
     Test,
-    
+
     /// Private integration / regression testing, used in `zcashd`.
     ///
     /// For some address types there is no distinction between test and regtest encodings;
@@ -57,42 +59,71 @@ pub enum Network {
     Regtest,
 }
 
-/// Converts a network name string into a `Network` enum value.
-///
-/// This function parses common network identifier strings ("main", "test", "regtest")
-/// and returns the corresponding `Network` enum value.
-///
-/// # Arguments
-/// * `identifier` - A string representing the network name
-///
-/// # Returns
-/// A `Result<Network>` containing the parsed network or an error
-///
-/// # Errors
-/// Returns an error if the provided identifier is not one of the recognized
-/// network names ("main", "test", or "regtest").
-///
-/// # Examples
-/// ```
-/// use zewif::Network;
-/// use zewif::network_for_identifier;
-/// use anyhow::Result;
-///
-/// # fn example() -> Result<()> {
-/// // Parse network from configuration string
-/// let network = network_for_identifier("main")?;
-/// assert_eq!(network, Network::Main);
-/// # Ok(())
-/// # }
-/// ```
-pub fn network_for_identifier(identifier: &str) -> Result<Network> {
-    if identifier == "main" {
-        Ok(Network::Main)
-    } else if identifier == "test" {
-        Ok(Network::Test)
-    } else if identifier == "regtest" {
-        Ok(Network::Regtest)
-    } else {
-        bail!("Invalid network identifier: {}", identifier)
+impl From<Network> for String {
+    fn from(value: Network) -> String {
+        match value {
+            Network::Main => "main".to_string(),
+            Network::Test => "test".to_string(),
+            Network::Regtest => "regtest".to_string(),
+        }
     }
 }
+
+impl TryFrom<String> for Network {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value == "main" {
+            Ok(Network::Main)
+        } else if value == "test" {
+            Ok(Network::Test)
+        } else if value == "regtest" {
+            Ok(Network::Regtest)
+        } else {
+            bail!("Invalid network identifier: {}", value)
+        }
+    }
+}
+
+impl From<Network> for CBOR {
+    fn from(value: Network) -> Self {
+        String::from(value).into()
+    }
+}
+
+impl TryFrom<CBOR> for Network {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        cbor.try_into_text()?.try_into()
+    }
+}
+
+impl From<Network> for Envelope {
+    fn from(value: Network) -> Self {
+        Envelope::new(String::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for Network {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        let network_str: String = envelope.extract_subject().context("Network")?;
+        Network::try_from(network_str)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for Network {
+    fn random() -> Self {
+        match rand::random::<u8>() % 3 {
+            0 => Network::Main,
+            1 => Network::Test,
+            _ => Network::Regtest,
+        }
+    }
+}
+
+test_cbor_roundtrip!(Network);
+test_envelope_roundtrip!(Network);

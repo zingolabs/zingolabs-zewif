@@ -3,8 +3,9 @@ use std::ops::{
 };
 
 use anyhow::{Context, Result};
+use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*};
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
 
 use super::CompactSize;
 
@@ -34,8 +35,7 @@ use super::CompactSize;
 ///
 /// # Examples
 /// ```
-/// use zewif::Data;
-///
+/// # use zewif::Data;
 /// // Create from raw bytes
 /// let bytes = vec![1, 2, 3, 4, 5];
 /// let data = Data::from_vec(bytes.clone());
@@ -53,8 +53,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let data = Data::new();
     /// assert!(data.is_empty());
     /// ```
@@ -69,8 +68,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// // From a slice
     /// let data1 = Data::from_bytes(&[1, 2, 3]);
     ///
@@ -91,8 +89,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let data = Data::from_bytes(&[1, 2, 3]);
     /// assert_eq!(data.len(), 3);
     /// ```
@@ -104,8 +101,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let empty = Data::new();
     /// assert!(empty.is_empty());
     ///
@@ -120,8 +116,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let data = Data::from_bytes(&[1, 2, 3]);
     /// let vec = data.to_vec();
     /// assert_eq!(vec, vec![1, 2, 3]);
@@ -134,8 +129,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let slice = &[1, 2, 3];
     /// let data = Data::from_slice(slice);
     /// assert_eq!(data.to_vec(), slice);
@@ -151,8 +145,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let vec = vec![1, 2, 3];
     /// let data = Data::from_vec(vec.clone());
     /// assert_eq!(data.to_vec(), vec);
@@ -169,8 +162,7 @@ impl Data {
     ///
     /// # Examples
     /// ```
-    /// use zewif::Data;
-    ///
+    /// # use zewif::Data;
     /// let hex = "010203";
     /// let data = Data::from_hex(hex).unwrap();
     /// assert_eq!(data.to_vec(), vec![1, 2, 3]);
@@ -410,3 +402,55 @@ impl From<&[u8]> for Data {
         Self::from_slice(data)
     }
 }
+
+impl From<Data> for CBOR {
+    fn from(data: Data) -> Self {
+        CBOR::to_byte_string(data)
+    }
+}
+
+impl From<&Data> for CBOR {
+    fn from(data: &Data) -> Self {
+        CBOR::to_byte_string(data)
+    }
+}
+
+impl TryFrom<CBOR> for Data {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        Ok(Data::from_slice(&bytes))
+    }
+}
+
+impl From<Data> for Envelope {
+    fn from(value: Data) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for Data {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject().context("Data")
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for Data {
+    fn random_with_size(size: usize) -> Self
+    where
+        Self: Sized,
+    {
+        bc_rand::random_data(size).into()
+    }
+
+    fn random() -> Self {
+        Self::random_with_size(32)
+    }
+}
+
+test_cbor_roundtrip!(Data);
+test_envelope_roundtrip!(Data);

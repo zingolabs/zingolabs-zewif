@@ -1,13 +1,15 @@
-use std::fmt;
+use bc_envelope::prelude::*;
 use std::cmp::{Ord, Ordering};
+use std::fmt;
 use std::ops::{Add, Sub};
 
 use crate::{parse, parser::prelude::*};
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// A block's position in the blockchain, represented as a distance from the genesis block.
 ///
-/// `BlockHeight` represents the number of blocks between a specific block and the genesis 
-/// block (block zero). Each block increments the height by one, forming a total ordering 
+/// `BlockHeight` represents the number of blocks between a specific block and the genesis
+/// block (block zero). Each block increments the height by one, forming a total ordering
 /// that defines the blockchain's canonical sequence.
 ///
 /// # Zcash Concept Relation
@@ -33,8 +35,7 @@ use crate::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::BlockHeight;
-///
+/// # use zewif::BlockHeight;
 /// // The genesis block
 /// let genesis = BlockHeight::from(0u32);
 ///
@@ -59,8 +60,7 @@ impl BlockHeight {
     ///
     /// # Examples
     /// ```
-    /// use zewif::BlockHeight;
-    ///
+    /// # use zewif::BlockHeight;
     /// // Create a constant block height
     /// const CANOPY_ACTIVATION: BlockHeight = BlockHeight::from_u32(1_046_400);
     /// ```
@@ -76,10 +76,9 @@ impl BlockHeight {
     ///
     /// # Examples
     /// ```
-    /// use zewif::BlockHeight;
-    ///
+    /// # use zewif::BlockHeight;
     /// let height = BlockHeight::from(100u32);
-    /// 
+    ///
     /// // Normal subtraction
     /// let earlier = height.saturating_sub(50);
     /// assert_eq!(u32::from(earlier), 50);
@@ -203,3 +202,49 @@ impl Parse for BlockHeight {
         Ok(BlockHeight::from(height))
     }
 }
+
+impl From<BlockHeight> for CBOR {
+    fn from(value: BlockHeight) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl From<&BlockHeight> for CBOR {
+    fn from(value: &BlockHeight) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl TryFrom<CBOR> for BlockHeight {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        Ok(BlockHeight::from(u32::try_from(cbor)?))
+    }
+}
+
+impl From<BlockHeight> for Envelope {
+    fn from(value: BlockHeight) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for BlockHeight {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for BlockHeight {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        let value = rand::Rng::gen_range(&mut rng, 0..u32::MAX);
+        Self(value)
+    }
+}
+
+test_cbor_roundtrip!(BlockHeight);
+test_envelope_roundtrip!(BlockHeight);

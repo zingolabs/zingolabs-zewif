@@ -27,8 +27,8 @@ use super::u256;
 ///
 /// # Examples
 /// ```
-/// use zewif::{Anchor, u256};
-///
+/// # use zewif::{Anchor, u256};
+/// #
 /// // Create an anchor from a u256 value
 /// let anchor_value = u256::default(); // Usually this would be a real tree root
 /// let anchor: Anchor = anchor_value;

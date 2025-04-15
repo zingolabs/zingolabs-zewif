@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
-use bc_components::ARID;
-
-use crate::{impl_attachable, NoQuotesDebugOption};
 use super::Network;
-
-use super::{Account, Attachments, Identifiable, SeedMaterial};
+use super::{Account, SeedMaterial};
+use crate::{
+    Indexed, NoQuotesDebugOption, envelope_indexed_objects_for_predicate, test_envelope_roundtrip,
+};
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A complete Zcash wallet with multiple accounts and cryptographic key material.
 ///
@@ -18,8 +17,6 @@ use super::{Account, Attachments, Identifiable, SeedMaterial};
 ///
 /// In Zcash wallet architecture:
 ///
-/// - **Wallet Identity**: Each wallet has a unique identifier (ARID) for consistent
-///   reference across migrations
 /// - **Network Context**: Wallets operate within a specific Zcash network environment
 ///   (mainnet, testnet, regtest)
 /// - **Multi-Account Organization**: A single wallet can contain multiple accounts
@@ -31,7 +28,6 @@ use super::{Account, Attachments, Identifiable, SeedMaterial};
 ///
 /// During wallet migration, the following wallet data must be preserved:
 ///
-/// - **Identity**: The wallet's unique ARID identifier
 /// - **Network**: The Zcash network context (mainnet, testnet, regtest)
 /// - **Seed Material**: When available, the cryptographic material used for key generation
 /// - **Accounts**: All accounts contained within the wallet, with their full structure
@@ -39,8 +35,7 @@ use super::{Account, Attachments, Identifiable, SeedMaterial};
 ///
 /// # Examples
 /// ```no_run
-/// use zewif::{ZewifWallet, Network, Account, SeedMaterial};
-///
+/// # use zewif::{ZewifWallet, Network, Account, SeedMaterial};
 /// // Create a new wallet for the Zcash mainnet
 /// let mut wallet = ZewifWallet::new(Network::Main);
 ///
@@ -50,23 +45,33 @@ use super::{Account, Attachments, Identifiable, SeedMaterial};
 ///
 /// // Access the wallet's network
 /// assert_eq!(wallet.network(), Network::Main);
-/// 
+///
 /// // If seed material were available, you could add it:
 /// // wallet.set_seed_material(seed_material);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ZewifWallet {
-    id: ARID,
+    index: usize,
     network: Network,
     seed_material: Option<SeedMaterial>,
-    accounts: HashMap<ARID, Account>,
+    accounts: Vec<Account>,
     attachments: Attachments,
+}
+
+impl Indexed for ZewifWallet {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
 }
 
 impl std::fmt::Debug for ZewifWallet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ZewifWallet")
-            .field("id", &self.id)
+            .field("index", &self.index)
             .field("network", &self.network)
             .field("seed_material", &NoQuotesDebugOption(&self.seed_material))
             .field("accounts", &self.accounts)
@@ -75,27 +80,17 @@ impl std::fmt::Debug for ZewifWallet {
     }
 }
 
-impl Identifiable for ZewifWallet {
-    fn id(&self) -> ARID {
-        self.id
-    }
-}
-
-impl_attachable!(ZewifWallet);
+bc_envelope::impl_attachable!(ZewifWallet);
 
 impl ZewifWallet {
     pub fn new(network: Network) -> Self {
         Self {
-            id: ARID::new(),
+            index: 0,
             network,
             seed_material: None,
-            accounts: HashMap::new(),
+            accounts: Vec::new(),
             attachments: Attachments::new(),
         }
-    }
-
-    pub fn id(&self) -> ARID {
-        self.id
     }
 
     pub fn network(&self) -> Network {
@@ -110,11 +105,66 @@ impl ZewifWallet {
         self.seed_material = Some(seed_material);
     }
 
-    pub fn accounts(&self) -> &HashMap<ARID, Account> {
+    pub fn accounts(&self) -> &Vec<Account> {
         &self.accounts
     }
 
     pub fn add_account(&mut self, account: Account) {
-        self.accounts.insert(account.id(), account);
+        self.accounts.push(account);
     }
 }
+
+#[rustfmt::skip]
+impl From<ZewifWallet> for Envelope {
+    fn from(value: ZewifWallet) -> Self {
+        let mut e = Envelope::new(value.index)
+            .add_type("ZewifWallet")
+            .add_assertion("network", value.network)
+            .add_optional_assertion("seed_material", value.seed_material);
+
+        e = value.accounts.iter().fold(e, |e, account| e.add_assertion("account", account.clone()));
+
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+#[rustfmt::skip]
+impl TryFrom<Envelope> for ZewifWallet {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("ZewifWallet")?;
+        let index = envelope.extract_subject()?;
+        let network = envelope.extract_object_for_predicate("network")?;
+        let seed_material = envelope.try_optional_object_for_predicate("seed_material")?;
+
+        let accounts = envelope_indexed_objects_for_predicate(&envelope, "account").context("accounts")?;
+
+        let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
+
+        Ok(Self {
+            index,
+            network,
+            seed_material,
+            accounts,
+            attachments,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for ZewifWallet {
+    fn random() -> Self {
+        use crate::SetIndexes;
+
+        Self {
+            index: 0,
+            network: Network::random(),
+            seed_material: SeedMaterial::opt_random(),
+            accounts: Vec::random().set_indexes(),
+            attachments: Attachments::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(ZewifWallet);

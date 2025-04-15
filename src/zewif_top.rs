@@ -1,9 +1,11 @@
+use anyhow::Context;
+use bc_components::ARID;
+use bc_envelope::prelude::*;
 use std::collections::HashMap;
 
-use bc_components::ARID;
+use crate::{Indexed, envelope_indexed_objects_for_predicate, test_envelope_roundtrip};
 
-use crate::impl_attachable;
-use super::{Attachments, Transaction, TxId, ZewifWallet};
+use super::{Transaction, TxId, ZewifWallet};
 
 /// The top-level container for the Zcash Wallet Interchange Format (ZeWIF).
 ///
@@ -36,8 +38,7 @@ use super::{Attachments, Transaction, TxId, ZewifWallet};
 ///
 /// # Examples
 /// ```no_run
-/// use zewif::{ZewifTop, ZewifWallet, Network, Transaction, TxId};
-///
+/// # use zewif::{ZewifTop, ZewifWallet, Network, Transaction, TxId};
 /// // Create the top-level container
 /// let mut zewif = ZewifTop::new();
 ///
@@ -53,38 +54,41 @@ use super::{Attachments, Transaction, TxId, ZewifWallet};
 /// // Access transactions
 /// let tx_count = zewif.transactions().len();
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ZewifTop {
-    wallets: HashMap<ARID, ZewifWallet>,
+    id: ARID,
+    wallets: Vec<ZewifWallet>,
     transactions: HashMap<TxId, Transaction>,
     attachments: Attachments,
 }
 
-impl_attachable!(ZewifTop);
+bc_envelope::impl_attachable!(ZewifTop);
 
 impl ZewifTop {
     pub fn new() -> Self {
         Self {
-            wallets: HashMap::new(),
+            id: ARID::new(),
+            wallets: Vec::new(),
             transactions: HashMap::new(),
             attachments: Attachments::new(),
         }
     }
 
-    pub fn wallets(&self) -> &HashMap<ARID, ZewifWallet> {
+    pub fn wallets(&self) -> &Vec<ZewifWallet> {
         &self.wallets
     }
 
-    pub fn add_wallet(&mut self, wallet: ZewifWallet) {
-        self.wallets.insert(wallet.id(), wallet);
+    pub fn wallets_len(&self) -> usize {
+        self.wallets.len()
+    }
+
+    pub fn add_wallet(&mut self, mut wallet: ZewifWallet) {
+        wallet.set_index(self.wallets_len());
+        self.wallets.push(wallet);
     }
 
     pub fn transactions(&self) -> &HashMap<TxId, Transaction> {
         &self.transactions
-    }
-
-    pub fn transactions_mut(&mut self) -> &mut HashMap<TxId, Transaction> {
-        &mut self.transactions
     }
 
     pub fn add_transaction(&mut self, txid: TxId, transaction: Transaction) {
@@ -105,3 +109,56 @@ impl Default for ZewifTop {
         Self::new()
     }
 }
+
+#[rustfmt::skip]
+impl From<ZewifTop> for Envelope {
+    fn from(value: ZewifTop) -> Self {
+        let mut e = Envelope::new(value.id)
+            .add_type("Zewif");
+        e = value.wallets.iter().fold(e, |e, wallet| e.add_assertion("wallet", wallet.clone()));
+        e = value.transactions.iter().fold(e, |e, (_, transaction)| e.add_assertion("transaction", transaction.clone()));
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+#[rustfmt::skip]
+impl TryFrom<Envelope> for ZewifTop {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("Zewif")?;
+        let id = envelope.extract_subject()?;
+
+        let wallets = envelope_indexed_objects_for_predicate(&envelope, "wallet")?;
+
+        let transactions = envelope
+            .try_objects_for_predicate::<Transaction>("transaction")?
+            .into_iter().map(|tx| (tx.txid(), tx)).collect();
+
+        let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
+
+        Ok(Self {
+            id,
+            wallets,
+            transactions,
+            attachments,
+        })
+    }
+}
+
+#[cfg(test)]
+#[rustfmt::skip]
+impl crate::RandomInstance for ZewifTop {
+    fn random() -> Self {
+        use crate::SetIndexes;
+
+        Self {
+            id: ARID::new(),
+            wallets: Vec::random().set_indexes(),
+            transactions: Vec::<Transaction>::random().iter().map(|tx| (tx.txid(), tx.clone())).collect(),
+            attachments: Attachments::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(ZewifTop);

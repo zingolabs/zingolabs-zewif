@@ -1,4 +1,7 @@
 use super::{DerivationInfo, TransparentSpendAuthority};
+use crate::test_envelope_roundtrip;
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A Bitcoin-compatible transparent address in the Zcash network.
 ///
@@ -28,8 +31,7 @@ use super::{DerivationInfo, TransparentSpendAuthority};
 ///
 /// # Examples
 /// ```
-/// use zewif::{TransparentAddress, TransparentSpendAuthority, DerivationInfo, NonHardenedChildIndex};
-///
+/// # use zewif::{TransparentAddress, TransparentSpendAuthority, DerivationInfo, NonHardenedChildIndex};
 /// // Create a new transparent address
 /// let mut address = TransparentAddress::new("t1exampleaddress");
 ///
@@ -46,16 +48,16 @@ use super::{DerivationInfo, TransparentSpendAuthority};
 /// // Access the address string
 /// assert_eq!(address.address(), "t1exampleaddress");
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransparentAddress {
     /// The transparent address string (starting with 't')
     /// This is used as a unique identifier within the wallet
     address: String, // Unique
-    
+
     /// Optional spending authority for this address
     /// When present, this contains the information needed to spend funds
     spend_authority: Option<TransparentSpendAuthority>,
-    
+
     /// Optional HD wallet derivation information
     /// When present, this contains the path information for HD wallets
     derivation_info: Option<DerivationInfo>,
@@ -73,8 +75,7 @@ impl TransparentAddress {
     ///
     /// # Examples
     /// ```
-    /// use zewif::TransparentAddress;
-    ///
+    /// # use zewif::TransparentAddress;
     /// let address = TransparentAddress::new("t1exampleaddress");
     /// assert_eq!(address.address(), "t1exampleaddress");
     /// ```
@@ -142,3 +143,37 @@ impl TransparentAddress {
         self.derivation_info = Some(derivation_info);
     }
 }
+
+impl From<TransparentAddress> for Envelope {
+    fn from(value: TransparentAddress) -> Self {
+        Envelope::new(value.address)
+            .add_type("TransparentAddress")
+            .add_optional_assertion("spend_authority", value.spend_authority)
+            .add_optional_assertion("derivation_info", value.derivation_info)
+    }
+}
+
+impl TryFrom<Envelope> for TransparentAddress {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("TransparentAddress").context("TransparentAddress")?;
+        let address = envelope.extract_subject().context("address")?;
+        let spend_authority = envelope.try_optional_object_for_predicate("spend_authority").context("spend_authority")?;
+        let derivation_info = envelope.try_optional_object_for_predicate("derivation_info").context("derivation_info")?;
+        Ok(TransparentAddress { address, spend_authority, derivation_info })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for TransparentAddress {
+    fn random() -> Self {
+        Self {
+            address: String::random(),
+            spend_authority: TransparentSpendAuthority::opt_random(),
+            derivation_info: DerivationInfo::opt_random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(TransparentAddress);

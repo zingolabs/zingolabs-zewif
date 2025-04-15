@@ -1,7 +1,11 @@
-use std::fmt;
-use std::io::{self, Read, Write};
 use super::parser::prelude::*;
-use anyhow::Result;
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
+use std::{
+    fmt,
+    io::{self, Read, Write},
+};
 
 /// A transaction identifier (TxId) represented as a 32-byte hash.
 ///
@@ -26,8 +30,7 @@ use anyhow::Result;
 ///
 /// # Examples
 /// ```
-/// use zewif::TxId;
-///
+/// # use zewif::TxId;
 /// // Create a TxId from a byte array
 /// let tx_bytes = [0u8; 32];
 /// let txid = TxId::from_bytes(tx_bytes);
@@ -96,8 +99,7 @@ impl TxId {
     ///
     /// # Examples
     /// ```
-    /// use zewif::TxId;
-    ///
+    /// # use zewif::TxId;
     /// // Usually this would be a real transaction hash
     /// let bytes = [0u8; 32];
     /// let txid = TxId::from_bytes(bytes);
@@ -167,3 +169,57 @@ impl TxId {
         Ok(())
     }
 }
+
+impl From<TxId> for CBOR {
+    fn from(value: TxId) -> Self {
+        CBOR::to_byte_string(value.0)
+    }
+}
+
+impl From<&TxId> for CBOR {
+    fn from(value: &TxId) -> Self {
+        CBOR::to_byte_string(value.0)
+    }
+}
+
+impl TryFrom<CBOR> for TxId {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        if bytes.len() != 32 {
+            bail!(
+                "Invalid TxId length: expected 32 bytes, got {}",
+                bytes.len()
+            );
+        }
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(&bytes);
+        Ok(TxId::from_bytes(hash))
+    }
+}
+
+impl From<TxId> for Envelope {
+    fn from(value: TxId) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for TxId {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject().context("TxId")
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for TxId {
+    fn random() -> Self {
+        let mut rng = bc_rand::thread_rng();
+        Self(bc_rand::rng_random_array(&mut rng))
+    }
+}
+
+test_cbor_roundtrip!(TxId);
+test_envelope_roundtrip!(TxId);

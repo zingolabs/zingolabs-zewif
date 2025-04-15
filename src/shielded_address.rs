@@ -1,11 +1,8 @@
-use crate::NoQuotesDebugOption;
-
 use super::Data;
-
-use super::{
-    sapling::SaplingIncomingViewingKey, 
-    SpendingKey,
-};
+use super::{SpendingKey, sapling::SaplingIncomingViewingKey};
+use crate::{NoQuotesDebugOption, test_envelope_roundtrip};
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A privacy-enhancing Zcash address that shields transaction details on the blockchain.
 ///
@@ -40,8 +37,7 @@ use super::{
 ///
 /// # Examples
 /// ```
-/// use zewif::{ShieldedAddress, SpendingKey, sapling::SaplingIncomingViewingKey, Blob, Data};
-///
+/// # use zewif::{ShieldedAddress, SpendingKey, sapling::SaplingIncomingViewingKey, Blob, Data};
 /// // Create a new Sapling shielded address
 /// let mut address = ShieldedAddress::new("zs1exampleaddress".to_string());
 ///
@@ -63,34 +59,34 @@ use super::{
 /// // Set HD derivation path information
 /// address.set_hd_derivation_path("m/32'/1'/0'/0/5".to_string());
 /// ```
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShieldedAddress {
     /// The actual address string (could encode Sapling, Orchard, etc.).
     /// This is used as a unique identifier within the wallet.
     address: String, // Unique
 
     /// Optional Incoming Viewing Key (IVK) for this address.
-    /// 
+    ///
     /// When present, this 32-byte key allows the wallet to detect and view incoming transactions
     /// to this address without granting spending capability. This is particularly important for
     /// "watch-only" wallet functionality where spending keys aren't available.
     incoming_viewing_key: Option<SaplingIncomingViewingKey>,
 
     /// Optional spending key for this address.
-    /// 
+    ///
     /// When present, this key allows spending funds sent to this address. During migration,
     /// spending keys are preserved exactly as they exist in the source wallet.
     spending_key: Option<SpendingKey>,
 
     /// Optional diversifier or other Zcash-specific metadata.
-    /// 
+    ///
     /// The diversifier is used in creating multiple distinct addresses from a single viewing key.
     /// It allows wallets to generate multiple unique shielded addresses that all share the same
     /// spending authority.
     diversifier: Option<Data>,
 
     /// HD derivation path if this address was derived using HD wallet techniques.
-    /// 
+    ///
     /// This stores the path used to derive this address in a hierarchical deterministic wallet.
     /// Preserving this information allows wallets to reconstruct their address hierarchy.
     hd_derivation_path: Option<String>,
@@ -100,7 +96,10 @@ impl std::fmt::Debug for ShieldedAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ShieldedAddress")
             .field("address", &self.address)
-            .field("incoming_viewing_key", &NoQuotesDebugOption(&self.incoming_viewing_key))
+            .field(
+                "incoming_viewing_key",
+                &NoQuotesDebugOption(&self.incoming_viewing_key),
+            )
             .field("spending_key", &self.spending_key)
             .field("diversifier", &self.diversifier)
             .field("hd_derivation_path", &self.hd_derivation_path)
@@ -177,3 +176,49 @@ impl ShieldedAddress {
         self.hd_derivation_path = Some(path);
     }
 }
+
+impl From<ShieldedAddress> for Envelope {
+    fn from(value: ShieldedAddress) -> Self {
+        Envelope::new(value.address)
+            .add_type("ShieldedAddress")
+            .add_optional_assertion("incoming_viewing_key", value.incoming_viewing_key)
+            .add_optional_assertion("spending_key", value.spending_key)
+            .add_optional_assertion("diversifier", value.diversifier)
+            .add_optional_assertion("hd_derivation_path", value.hd_derivation_path)
+    }
+}
+
+impl TryFrom<Envelope> for ShieldedAddress {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("ShieldedAddress").context("ShieldedAddress")?;
+        let address = envelope.extract_subject().context("address")?;
+        let incoming_viewing_key = envelope.try_optional_object_for_predicate("incoming_viewing_key").context("incoming_viewing_key")?;
+        let spending_key = envelope.try_optional_object_for_predicate("spending_key").context("spending_key")?;
+        let diversifier = envelope.try_optional_object_for_predicate("diversifier").context("diversifier")?;
+        let hd_derivation_path = envelope.try_optional_object_for_predicate("hd_derivation_path").context("hd_derivation_path")?;
+        Ok(ShieldedAddress {
+            address,
+            incoming_viewing_key,
+            spending_key,
+            diversifier,
+            hd_derivation_path,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for ShieldedAddress {
+    fn random() -> Self {
+        Self {
+            address: String::random(),
+            incoming_viewing_key: SaplingIncomingViewingKey::opt_random(),
+            spending_key: SpendingKey::opt_random(),
+            diversifier: Data::opt_random(),
+            hd_derivation_path: String::opt_random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(ShieldedAddress);

@@ -1,6 +1,7 @@
 use anyhow::Result;
+use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*};
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip};
 
 /// The block height at which a Zcash transaction expires if not yet mined.
 ///
@@ -29,8 +30,7 @@ use crate::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::ExpiryHeight;
-///
+/// # use zewif::ExpiryHeight;
 /// // Create an expiry height for 20 blocks in the future
 /// let current_height = 1_000_000;
 /// let expiry = ExpiryHeight::from(current_height + 20);
@@ -59,8 +59,7 @@ impl ExpiryHeight {
     ///
     /// # Examples
     /// ```
-    /// use zewif::ExpiryHeight;
-    ///
+    /// # use zewif::ExpiryHeight;
     /// // No expiry (height 0)
     /// let no_expiry = ExpiryHeight::from(0u32);
     /// assert!(no_expiry.as_option().is_none());
@@ -91,3 +90,30 @@ impl From<ExpiryHeight> for u32 {
         expiry_height.0
     }
 }
+
+impl From<ExpiryHeight> for CBOR {
+    fn from(expiry_height: ExpiryHeight) -> Self {
+        CBOR::from(expiry_height.0)
+    }
+}
+
+impl TryFrom<CBOR> for ExpiryHeight {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        // let expiry_height: u32 = cbor.try_into()?;
+        // Ok(ExpiryHeight::from(expiry_height))
+        cbor.try_into().map(ExpiryHeight)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for ExpiryHeight {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let expiry_height = rand::Rng::gen_range(&mut rng, 0..=u32::MAX);
+        ExpiryHeight::from(expiry_height)
+    }
+}
+
+test_cbor_roundtrip!(ExpiryHeight);

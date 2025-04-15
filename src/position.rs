@@ -1,3 +1,8 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+
 /// A position index in a ZCash note commitment tree.
 ///
 /// `Position` represents the index of a note commitment in Zcash's merkle trees,
@@ -53,3 +58,48 @@ impl From<usize> for Position {
         Self(value as u32)
     }
 }
+
+impl From<Position> for CBOR {
+    fn from(value: Position) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl From<&Position> for CBOR {
+    fn from(value: &Position) -> Self {
+        CBOR::from(value.0)
+    }
+}
+
+impl TryFrom<CBOR> for Position {
+    type Error = anyhow::Error;
+
+    fn try_from(value: CBOR) -> Result<Self, Self::Error> {
+        let position: u32 = value.try_into()?;
+        Ok(Position(position))
+    }
+}
+
+impl From<Position> for Envelope {
+    fn from(value: Position) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for Position {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject().context("position")
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for Position {
+    fn random() -> Self {
+        Self(u32::random())
+    }
+}
+
+test_cbor_roundtrip!(Position);
+test_envelope_roundtrip!(Position);

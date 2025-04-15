@@ -1,21 +1,21 @@
-use anyhow::Result;
-
 use super::Data;
-use crate::{parse, parser::prelude::*};
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
 use std::ops::{
     Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
 };
 
 /// A Bitcoin-style script for spending or encumbering coins in transparent transactions.
 ///
-/// `Script` represents a serialized Bitcoin script, which is a sequence of operations used to 
+/// `Script` represents a serialized Bitcoin script, which is a sequence of operations used to
 /// specify conditions for spending Zcash coins in transparent transactions. In ZeWIF,
 /// scripts appear in two contexts:
 ///
 /// - `script_pubkey` in outputs: Defines spending conditions (e.g., P2PKH, P2SH)
 /// - `script_sig` in inputs: Contains signatures and data to satisfy spending conditions
-/// 
-/// Internally, `Script` is a wrapper around [`Data`](crate::Data), providing a 
+///
+/// Internally, `Script` is a wrapper around [`Data`](crate::Data), providing a
 /// type-safe representation for script handling.
 ///
 /// # Zcash Concept Relation
@@ -33,8 +33,7 @@ use std::ops::{
 ///
 /// # Examples
 /// ```
-/// use zewif::{Script, Data};
-///
+/// # use zewif::{Script, Data};
 /// // Create a script from binary data (this would typically be from a transaction)
 /// let script_bytes = vec![0x76, 0xa9, 0x14, /* more script bytes */];
 /// let script = Script::from(Data::from_vec(script_bytes.clone()));
@@ -190,3 +189,55 @@ impl IndexMut<RangeToInclusive<usize>> for Script {
         &mut self.0[index]
     }
 }
+
+impl From<Script> for CBOR {
+    fn from(value: Script) -> Self {
+        CBOR::to_byte_string(value.0)
+    }
+}
+
+impl From<&Script> for CBOR {
+    fn from(value: &Script) -> Self {
+        CBOR::to_byte_string(value.0.clone())
+    }
+}
+
+impl TryFrom<CBOR> for Script {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        if bytes.len() > 0xFFFF {
+            bail!("Script length exceeds maximum size of 65535 bytes");
+        }
+        Ok(Script(Data::from_vec(bytes)))
+    }
+}
+
+impl From<Script> for Envelope {
+    fn from(value: Script) -> Self {
+        Envelope::new(CBOR::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for Script {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.extract_subject().context("Script")
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for Script {
+    fn random_with_size(size: usize) -> Self {
+        Self(Data::random_with_size(size))
+    }
+
+    fn random() -> Self {
+        Self(Data::random())
+    }
+}
+
+test_cbor_roundtrip!(Script);
+test_envelope_roundtrip!(Script);

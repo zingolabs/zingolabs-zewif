@@ -1,3 +1,7 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+use crate::{test_envelope_roundtrip, Indexed};
+
 use super::{Amount, Blob, u256};
 
 /// Represents a sent output in an Orchard shielded transaction within a Zcash wallet.
@@ -30,9 +34,8 @@ use super::{Amount, Blob, u256};
 ///
 /// # Examples
 /// ```
-/// use zewif::{OrchardSentOutput, Blob, u256, Amount};
-/// use anyhow::Result;
-///
+/// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+/// # use anyhow::Result;
 /// # fn example() -> Result<()> {
 /// // Create a new Orchard sent output with all required components
 /// let diversifier = Blob::<11>::default();
@@ -57,8 +60,11 @@ use super::{Amount, Blob, u256};
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OrchardSentOutput {
+    /// The index of the sent output in the transaction.
+    index: usize,
+
     /// The diversifier used in deriving the recipient's shielded address.
     ///
     /// This 11-byte value serves the same purpose as in Sapling, enabling address
@@ -102,6 +108,16 @@ pub struct OrchardSentOutput {
     rcm: u256,
 }
 
+impl Indexed for OrchardSentOutput {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
+
 impl OrchardSentOutput {
     /// Creates a new `OrchardSentOutput` with the specified parameters.
     ///
@@ -121,9 +137,8 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{OrchardSentOutput, Blob, u256, Amount};
-    /// use anyhow::Result;
-    ///
+    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// let diversifier = Blob::<11>::default();
     /// let recipient_pk = u256::default();
@@ -152,6 +167,7 @@ impl OrchardSentOutput {
         rcm: u256,
     ) -> Self {
         Self {
+            index: 0,
             diversifier,
             receipient_public_key,
             value,
@@ -476,3 +492,58 @@ impl OrchardSentOutput {
         self.rcm = rcm;
     }
 }
+
+impl From<OrchardSentOutput> for Envelope {
+    fn from(value: OrchardSentOutput) -> Self {
+        Envelope::new(value.index)
+            .add_type("OrchardSentOutput")
+            .add_assertion("diversifier", value.diversifier)
+            .add_assertion("receipient_public_key", value.receipient_public_key)
+            .add_assertion("value", value.value)
+            .add_assertion("rho", value.rho)
+            .add_assertion("psi", value.psi)
+            .add_assertion("rcm", value.rcm)
+    }
+}
+
+impl TryFrom<Envelope> for OrchardSentOutput {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("OrchardSentOutput").context("OrchardSentOutput")?;
+        let index = envelope.extract_subject().context("index")?;
+        let diversifier = envelope.extract_object_for_predicate("diversifier").context("diversifier")?;
+        let receipient_public_key = envelope.extract_object_for_predicate("receipient_public_key").context("receipient_public_key")?;
+        let value = envelope.extract_object_for_predicate("value").context("value")?;
+        let rho = envelope.extract_object_for_predicate("rho").context("rho")?;
+        let psi = envelope.extract_object_for_predicate("psi").context("psi")?;
+        let rcm = envelope.extract_object_for_predicate("rcm").context("rcm")?;
+
+        Ok(OrchardSentOutput {
+            index,
+            diversifier,
+            receipient_public_key,
+            value,
+            rho,
+            psi,
+            rcm,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for OrchardSentOutput {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            diversifier: Blob::random(),
+            receipient_public_key: u256::random(),
+            value: Amount::random(),
+            rho: u256::random(),
+            psi: u256::random(),
+            rcm: u256::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(OrchardSentOutput);

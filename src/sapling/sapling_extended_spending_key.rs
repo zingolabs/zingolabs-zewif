@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use bc_envelope::prelude::*;
 
-use crate::parse;
+use crate::{parse, test_envelope_roundtrip};
 use super::super::parser::prelude::*;
 use super::super::u256;
 
@@ -27,7 +28,7 @@ use super::SaplingExpandedSpendingKey;
 ///
 /// # Data Preservation
 /// During wallet migration, all components must be preserved exactly to maintain:
-/// 
+///
 /// - Spending capability for all derived addresses
 /// - The ability to derive new child keys
 /// - Proper wallet structure and hierarchy
@@ -35,8 +36,7 @@ use super::SaplingExpandedSpendingKey;
 ///
 /// # Examples
 /// ```
-/// use zewif::{sapling::{SaplingExtendedSpendingKey, SaplingExpandedSpendingKey}, u256};
-///
+/// # use zewif::{sapling::{SaplingExtendedSpendingKey, SaplingExpandedSpendingKey}, u256};
 /// // Create the expanded spending key components
 /// let ask = u256::default();
 /// let nsk = u256::default();
@@ -95,3 +95,53 @@ impl Parse for SaplingExtendedSpendingKey {
         })
     }
 }
+
+impl From<SaplingExtendedSpendingKey> for Envelope {
+    fn from(value: SaplingExtendedSpendingKey) -> Self {
+        Envelope::new(value.expsk)
+            .add_type("SaplingExtendedSpendingKey")
+            .add_assertion("depth", value.depth)
+            .add_assertion("parent_fvk_tag", value.parent_fvk_tag)
+            .add_assertion("child_index", value.child_index)
+            .add_assertion("chain_code", value.chain_code)
+            .add_assertion("dk", value.dk)
+    }
+}
+
+impl TryFrom<Envelope> for SaplingExtendedSpendingKey {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingExtendedSpendingKey").context("SaplingExtendedSpendingKey")?;
+        let expsk = envelope.try_as().context("expsk")?;
+        let depth = envelope.extract_object_for_predicate("depth").context("depth")?;
+        let parent_fvk_tag = envelope.extract_object_for_predicate("parent_fvk_tag").context("parent_fvk_tag")?;
+        let child_index = envelope.extract_object_for_predicate("child_index").context("child_index")?;
+        let chain_code = envelope.extract_object_for_predicate("chain_code").context("chain_code")?;
+        let dk = envelope.extract_object_for_predicate("dk").context("dk")?;
+        Ok(SaplingExtendedSpendingKey {
+            expsk,
+            depth,
+            parent_fvk_tag,
+            child_index,
+            chain_code,
+            dk,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SaplingExtendedSpendingKey {
+    fn random() -> Self {
+        Self {
+            depth: u8::random(),
+            parent_fvk_tag: u32::random(),
+            child_index: u32::random(),
+            chain_code: u256::random(),
+            expsk: SaplingExpandedSpendingKey::random(),
+            dk: u256::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(SaplingExtendedSpendingKey);

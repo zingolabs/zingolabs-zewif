@@ -1,6 +1,7 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*};
+use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// The language used for BIP-39/BIP-44 mnemonic seed phrases in a wallet.
 ///
@@ -29,9 +30,8 @@ use crate::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::MnemonicLanguage;
-/// use anyhow::Result;
-///
+/// # use zewif::MnemonicLanguage;
+/// # use anyhow::Result;
 /// // Create a language identifier from a numeric value
 /// let language = MnemonicLanguage::from_u32(0)?;
 /// assert_eq!(language, MnemonicLanguage::English);
@@ -83,9 +83,8 @@ impl MnemonicLanguage {
     ///
     /// # Examples
     /// ```
-    /// use zewif::MnemonicLanguage;
-    /// use anyhow::Result;
-    ///
+    /// # use zewif::MnemonicLanguage;
+    /// # use anyhow::Result;
     /// // Create English (most common) language
     /// let english = MnemonicLanguage::from_u32(0)?;
     ///
@@ -124,8 +123,7 @@ impl MnemonicLanguage {
     ///
     /// # Examples
     /// ```
-    /// use zewif::MnemonicLanguage;
-    ///
+    /// # use zewif::MnemonicLanguage;
     /// let language = MnemonicLanguage::English;
     /// assert_eq!(language.name(), "English");
     ///
@@ -187,3 +185,79 @@ impl Parse for MnemonicLanguage {
         MnemonicLanguage::from_u32(value)
     }
 }
+
+impl From<MnemonicLanguage> for String {
+    fn from(value: MnemonicLanguage) -> Self {
+        match value {
+            MnemonicLanguage::English => "en".to_string(),
+            MnemonicLanguage::SimplifiedChinese => "zh-Hans".to_string(),
+            MnemonicLanguage::TraditionalChinese => "zh-Hant".to_string(),
+            MnemonicLanguage::Czech => "cs".to_string(),
+            MnemonicLanguage::French => "fr".to_string(),
+            MnemonicLanguage::Italian => "it".to_string(),
+            MnemonicLanguage::Japanese => "ja".to_string(),
+            MnemonicLanguage::Korean => "ko".to_string(),
+            MnemonicLanguage::Portuguese => "pt".to_string(),
+            MnemonicLanguage::Spanish => "es".to_string(),
+        }
+    }
+}
+
+impl TryFrom<String> for MnemonicLanguage {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "en" => Ok(MnemonicLanguage::English),
+            "zh-Hans" => Ok(MnemonicLanguage::SimplifiedChinese),
+            "zh-Hant" => Ok(MnemonicLanguage::TraditionalChinese),
+            "cs" => Ok(MnemonicLanguage::Czech),
+            "fr" => Ok(MnemonicLanguage::French),
+            "it" => Ok(MnemonicLanguage::Italian),
+            "ja" => Ok(MnemonicLanguage::Japanese),
+            "ko" => Ok(MnemonicLanguage::Korean),
+            "pt" => Ok(MnemonicLanguage::Portuguese),
+            "es" => Ok(MnemonicLanguage::Spanish),
+            _ => bail!("Invalid MnemonicLanguage string: {}", value),
+        }
+    }
+}
+
+impl From<MnemonicLanguage> for CBOR {
+    fn from(value: MnemonicLanguage) -> Self {
+        String::from(value).into()
+    }
+}
+
+impl TryFrom<CBOR> for MnemonicLanguage {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        cbor.try_into_text()?.try_into()
+    }
+}
+
+impl From<MnemonicLanguage> for Envelope {
+    fn from(value: MnemonicLanguage) -> Self {
+        Envelope::new(String::from(value))
+    }
+}
+
+impl TryFrom<Envelope> for MnemonicLanguage {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        let language_str: String = envelope.extract_subject().context("MnemonicLanguage")?;
+        MnemonicLanguage::try_from(language_str)
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for MnemonicLanguage {
+    fn random() -> Self {
+        MnemonicLanguage::from_u32(rand::random::<u8>() as u32 % 10).unwrap()
+    }
+}
+
+test_cbor_roundtrip!(MnemonicLanguage);
+test_envelope_roundtrip!(MnemonicLanguage);

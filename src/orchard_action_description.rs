@@ -1,25 +1,8 @@
-use crate::impl_attachable;
+use crate::{Indexed, OrchardAnchorWitness, Position, test_envelope_roundtrip};
+use anyhow::Context;
+
 use super::{Blob, Data, u256};
-
-use super::{Anchor, Attachments, IncrementalWitness, Position};
-
-/// The depth of the Orchard Merkle tree, set to 32 levels.
-///
-/// This constant defines the maximum depth of the Orchard note commitment tree,
-/// which allows for 2^32 (over 4 billion) note commitments to be included.
-const ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH: usize = 32;
-
-/// A type alias for the Sinsemilla hash used in Orchard Merkle trees.
-///
-/// Sinsemilla hashes are cryptographic hash functions used for note commitments 
-/// and in the Merkle tree structure for the Orchard protocol. They provide efficient
-/// hashing with homomorphic properties used in zero-knowledge proofs.
-pub type SinsemillaHash = u256;
-
-/// A cryptographic witness proving that an Orchard note commitment exists in the note commitment tree.
-///
-/// This type specializes the generic `IncrementalWitness` for the Orchard protocol parameters.
-pub type OrchardWitness = IncrementalWitness<ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH, SinsemillaHash>;
+use bc_envelope::prelude::*;
 
 /// A description of an action in the Orchard shielded pool.
 ///
@@ -55,23 +38,22 @@ pub type OrchardWitness = IncrementalWitness<ORCHARD_INCREMENTAL_MERKLE_TREE_DEP
 ///
 /// # Examples
 /// ```
-/// use zewif::{OrchardActionDescription, Position, u256, Blob, Data};
-///
+/// # use zewif::{OrchardActionDescription, Position, u256, Blob, Data, Indexed};
 /// // Create a new Orchard action description
 /// let mut action = OrchardActionDescription::new();
 ///
 /// // Set action properties
-/// let action_index = 0;
+/// let index = 0;
 /// let nullifier = u256::default(); // In practice, a real nullifier
 /// let commitment = u256::default(); // In practice, a real commitment
 ///
-/// action.set_action_index(action_index);
+/// action.set_index(index);
 /// action.set_nullifier(nullifier);
 /// action.set_commitment(commitment);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OrchardActionDescription {
-    action_index: u32,
+    index: usize,
     /// The anchor of the current commitment tree.
     anchor: u256,
     /// A nullifier to ensure the note is spent only once.
@@ -91,16 +73,26 @@ pub struct OrchardActionDescription {
     /// an anchor depth 20 blocks back from the chain tip, or the oldest possible witness at a lesser depth.
     note_commitment_tree_position: Position,
     /// Witness
-    witness: Option<(Anchor, OrchardWitness)>,
+    witness: Option<OrchardAnchorWitness>,
     attachments: Attachments,
 }
 
-impl_attachable!(OrchardActionDescription);
+bc_envelope::impl_attachable!(OrchardActionDescription);
+
+impl Indexed for OrchardActionDescription {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
 
 impl OrchardActionDescription {
     pub fn new() -> Self {
         Self {
-            action_index: 0,
+            index: 0,
             anchor: u256::default(),
             nullifier: u256::default(),
             zkproof: Data::default(),
@@ -112,14 +104,6 @@ impl OrchardActionDescription {
             witness: None,
             attachments: Attachments::new(),
         }
-    }
-
-    pub fn action_index(&self) -> u32 {
-        self.action_index
-    }
-
-    pub fn set_action_index(&mut self, action_index: u32) {
-        self.action_index = action_index;
     }
 
     pub fn anchor(&self) -> &u256 {
@@ -186,11 +170,11 @@ impl OrchardActionDescription {
         self.note_commitment_tree_position = note_commitment_tree_position;
     }
 
-    pub fn witness(&self) -> Option<&(Anchor, OrchardWitness)> {
+    pub fn witness(&self) -> Option<&OrchardAnchorWitness> {
         self.witness.as_ref()
     }
 
-    pub fn set_witness(&mut self, witness: Option<(Anchor, OrchardWitness)>) {
+    pub fn set_witness(&mut self, witness: Option<OrchardAnchorWitness>) {
         self.witness = witness;
     }
 }
@@ -200,3 +184,80 @@ impl Default for OrchardActionDescription {
         Self::new()
     }
 }
+
+#[cfg(test)]
+impl crate::RandomInstance for OrchardActionDescription {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            anchor: u256::random(),
+            nullifier: u256::random(),
+            zkproof: Data::random(),
+            commitment: u256::random(),
+            ephemeral_key: u256::random(),
+            enc_ciphertext: Blob::random(),
+            memo: Data::opt_random(),
+            note_commitment_tree_position: Position::random(),
+            witness: OrchardAnchorWitness::opt_random(),
+            attachments: Attachments::random(),
+        }
+    }
+}
+
+impl From<OrchardActionDescription> for Envelope {
+    fn from(value: OrchardActionDescription) -> Self {
+        let e = Envelope::new(value.index)
+            .add_type("OrchardActionDescription")
+            .add_assertion("anchor", value.anchor)
+            .add_assertion("nullifier", value.nullifier)
+            .add_assertion("zkproof", value.zkproof)
+            .add_assertion("commitment", value.commitment)
+            .add_assertion("ephemeral_key", value.ephemeral_key)
+            .add_assertion("enc_ciphertext", value.enc_ciphertext)
+            .add_optional_assertion("memo", value.memo)
+            .add_assertion(
+                "note_commitment_tree_position",
+                value.note_commitment_tree_position,
+            )
+            .add_optional_assertion("witness", value.witness);
+
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+impl TryFrom<Envelope> for OrchardActionDescription {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("OrchardActionDescription").context("OrchardActionDescription")?;
+        let index = envelope.extract_subject().context("index")?;
+        let anchor = envelope.extract_object_for_predicate("anchor").context("anchor")?;
+        let nullifier = envelope.extract_object_for_predicate("nullifier").context("nullifier")?;
+        let zkproof = envelope.extract_object_for_predicate("zkproof").context("zkproof")?;
+        let commitment = envelope.extract_object_for_predicate("commitment").context("commitment")?;
+        let ephemeral_key = envelope.extract_object_for_predicate("ephemeral_key").context("ephemeral_key")?;
+        let enc_ciphertext = envelope.extract_object_for_predicate("enc_ciphertext").context("enc_ciphertext")?;
+        let memo = envelope.try_optional_object_for_predicate("memo").context("memo")?;
+        let note_commitment_tree_position =
+            envelope.extract_object_for_predicate("note_commitment_tree_position").context("note_commitment_tree_position")?;
+        let witness = envelope.try_optional_object_for_predicate("witness").context("witness")?;
+
+        let attachments = Attachments::try_from_envelope(&envelope)?;
+
+        Ok(OrchardActionDescription {
+            index,
+            anchor,
+            nullifier,
+            zkproof,
+            commitment,
+            ephemeral_key,
+            enc_ciphertext,
+            memo,
+            note_commitment_tree_position,
+            witness,
+            attachments,
+        })
+    }
+}
+
+test_envelope_roundtrip!(OrchardActionDescription, 10, true);

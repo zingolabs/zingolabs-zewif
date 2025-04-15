@@ -19,7 +19,7 @@ use super::{parse, parser::prelude::*};
 /// - **Authentication Paths**: A witness contains the minimum set of hash values needed to
 ///   verify that a specific leaf (note commitment) is part of a tree with a known root (anchor)
 ///
-/// - **Zero-Knowledge Proofs**: The witness data is used within zk-SNARKs to validate 
+/// - **Zero-Knowledge Proofs**: The witness data is used within zk-SNARKs to validate
 ///   transactions without revealing private information
 ///
 /// Each shielded protocol has a different Merkle tree depth:
@@ -40,8 +40,7 @@ use super::{parse, parser::prelude::*};
 ///
 /// # Examples
 /// ```
-/// use zewif::{IncrementalMerkleTree, IncrementalWitness, u256};
-///
+/// # use zewif::{IncrementalMerkleTree, IncrementalWitness, u256};
 /// // Create a tree with a specific structure
 /// let tree = IncrementalMerkleTree::new();
 ///
@@ -56,10 +55,10 @@ use super::{parse, parser::prelude::*};
 pub struct IncrementalWitness<const DEPTH: usize, Hash> {
     /// The Merkle tree as it was when the witness was created
     tree: IncrementalMerkleTree,
-    
+
     /// Hashes filled in since the witness was created
     filled: Vec<Hash>,
-    
+
     /// Optional cursor for tracking the witness position
     cursor: Option<IncrementalMerkleTree>,
 }
@@ -83,11 +82,7 @@ impl<const DEPTH: usize, Hash> IncrementalWitness<DEPTH, Hash> {
         filled: Vec<Hash>,
         cursor: Option<IncrementalMerkleTree>,
     ) -> Self {
-        Self {
-            tree,
-            filled,
-            cursor,
-        }
+        Self { tree, filled, cursor }
     }
 
     /// Returns a reference to the Merkle tree state when the witness was created.

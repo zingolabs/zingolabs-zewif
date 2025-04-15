@@ -1,4 +1,6 @@
-use super::Blob;
+use crate::{Bip39Mnemonic, Seed, test_envelope_roundtrip};
+use anyhow::{Context, Result, bail};
+use bc_envelope::prelude::*;
 
 /// Source material used to generate cryptographic keys in a Zcash wallet.
 ///
@@ -39,32 +41,33 @@ use super::Blob;
 ///
 /// # Examples
 /// ```
-/// use zewif::{SeedMaterial, Blob};
-///
+/// # use zewif::{SeedMaterial, Blob, Bip39Mnemonic, Seed, MnemonicLanguage};
 /// // Create from a BIP-39 mnemonic phrase
+/// let language = MnemonicLanguage::English;
 /// let mnemonic = SeedMaterial::Bip39Mnemonic(
-///     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-///     .to_string()
+///     Bip39Mnemonic::new("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", Some(language))
 /// );
 ///
 /// // Create from a pre-BIP39 raw seed
 /// let raw_seed = [0u8; 32];
-/// let seed_blob = Blob::new(raw_seed);
-/// let binary_seed = SeedMaterial::PreBIP39Seed(seed_blob);
+/// let seed = Seed::new(raw_seed);
+/// let binary_seed = SeedMaterial::Seed(seed);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum SeedMaterial {
     /// A BIP-39 mnemonic phrase (typically 12 or 24 words) used as a human-readable seed
-    Bip39Mnemonic(String),
+    Bip39Mnemonic(Bip39Mnemonic),
     /// A raw 32-byte seed predating the BIP-39 standard
-    PreBIP39Seed(Blob<32>),
+    Seed(Seed),
 }
 
 impl std::fmt::Debug for SeedMaterial {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bip39Mnemonic(phrase) => write!(f, "SeedMaterial::Bip39Mnemonic(\"{}\")", phrase),
-            Self::PreBIP39Seed(seed) => write!(f, "SeedMaterial::PreBIP39Seed({:?})", seed),
+            Self::Bip39Mnemonic(phrase) => {
+                write!(f, "SeedMaterial::Bip39Mnemonic(\"{:?}\")", phrase)
+            }
+            Self::Seed(seed) => write!(f, "SeedMaterial::Seed({:?})", seed),
         }
     }
 }
@@ -72,8 +75,48 @@ impl std::fmt::Debug for SeedMaterial {
 impl std::fmt::Display for SeedMaterial {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bip39Mnemonic(phrase) => write!(f, "SeedMaterial::Bip39Mnemonic(\"{}\")", phrase),
-            Self::PreBIP39Seed(seed) => write!(f, "SeedMaterial::PreBIP39Seed({:?})", seed),
+            Self::Bip39Mnemonic(phrase) => {
+                write!(f, "SeedMaterial::Bip39Mnemonic(\"{:?}\")", phrase)
+            }
+            Self::Seed(seed) => write!(f, "SeedMaterial::Seed({:?})", seed),
         }
     }
 }
+
+impl From<SeedMaterial> for Envelope {
+    fn from(value: SeedMaterial) -> Self {
+        match value {
+            SeedMaterial::Bip39Mnemonic(mnemonic) => Envelope::new(mnemonic),
+            SeedMaterial::Seed(seed) => Envelope::new(seed),
+        }
+        .add_type("SeedMaterial")
+    }
+}
+
+impl TryFrom<Envelope> for SeedMaterial {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SeedMaterial").context("SeedMaterial")?;
+        if let Ok(mnemonic) = Bip39Mnemonic::try_from(envelope.clone()) {
+            Ok(SeedMaterial::Bip39Mnemonic(mnemonic))
+        } else if let Ok(seed) = Seed::try_from(envelope.clone()) {
+            Ok(SeedMaterial::Seed(seed))
+        } else {
+            bail!("Invalid SeedMaterial envelope")
+        }
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SeedMaterial {
+    fn random() -> Self {
+        if rand::random::<bool>() {
+            SeedMaterial::Bip39Mnemonic(Bip39Mnemonic::random())
+        } else {
+            SeedMaterial::Seed(Seed::random())
+        }
+    }
+}
+
+test_envelope_roundtrip!(SeedMaterial, 10, true);

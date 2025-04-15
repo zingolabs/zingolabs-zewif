@@ -1,8 +1,8 @@
-use anyhow::Result;
-
-use crate::parse;
-use crate::parser::prelude::*;
 use crate::CompactSize;
+use crate::parser::prelude::*;
+use crate::{parse, test_cbor_roundtrip};
+use anyhow::{Result, bail};
+use bc_envelope::prelude::*;
 
 /// ZCash receiver types used in addresses, particularly in Unified Addresses.
 ///
@@ -30,8 +30,7 @@ use crate::CompactSize;
 /// # Examples
 /// In a Unified Address, multiple receiver types might be present:
 /// ```
-/// use zewif::ReceiverType;
-///
+/// # use zewif::ReceiverType;
 /// // A UA might contain both transparent and shielded receivers
 /// let receivers = vec![ReceiverType::P2PKH, ReceiverType::Sapling];
 ///
@@ -39,7 +38,7 @@ use crate::CompactSize;
 /// let has_orchard = receivers.contains(&ReceiverType::Orchard);
 /// assert!(!has_orchard);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum ReceiverType {
     /// P2PKH (Pay to Public Key Hash) transparent address type
@@ -65,3 +64,58 @@ impl Parse for ReceiverType {
         }
     }
 }
+
+impl From<ReceiverType> for String {
+    fn from(value: ReceiverType) -> Self {
+        match value {
+            ReceiverType::P2PKH => "P2PKH".to_string(),
+            ReceiverType::P2SH => "P2SH".to_string(),
+            ReceiverType::Sapling => "Sapling".to_string(),
+            ReceiverType::Orchard => "Orchard".to_string(),
+        }
+    }
+}
+
+impl TryFrom<String> for ReceiverType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        match value.as_str() {
+            "P2PKH" => Ok(ReceiverType::P2PKH),
+            "P2SH" => Ok(ReceiverType::P2SH),
+            "Sapling" => Ok(ReceiverType::Sapling),
+            "Orchard" => Ok(ReceiverType::Orchard),
+            _ => bail!("Invalid ReceiverType string: {}", value),
+        }
+    }
+}
+
+impl From<ReceiverType> for CBOR {
+    fn from(value: ReceiverType) -> Self {
+        String::from(value).into()
+    }
+}
+
+impl TryFrom<CBOR> for ReceiverType {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self> {
+        cbor.try_into_text()?.try_into()
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for ReceiverType {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let a = rand::Rng::gen_range(&mut rng, 0..=3);
+        match a {
+            0 => ReceiverType::P2PKH,
+            1 => ReceiverType::P2SH,
+            2 => ReceiverType::Sapling,
+            _ => ReceiverType::Orchard,
+        }
+    }
+}
+
+test_cbor_roundtrip!(ReceiverType);

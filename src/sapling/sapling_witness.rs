@@ -1,3 +1,8 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+
+use crate::test_envelope_roundtrip;
+
 use super::super::{IncrementalWitness, u256};
 
 /// The depth of the Sapling Merkle tree, set to 32 levels.
@@ -48,3 +53,26 @@ pub type PedersenHash = u256;
 /// witness for a Merkle tree with 32 levels using Pedersen hashes as the hash function.
 /// The witness supports incremental updates as new notes are added to the tree.
 pub type SaplingWitness = IncrementalWitness<SAPLING_INCREMENTAL_MERKLE_TREE_DEPTH, PedersenHash>;
+
+impl From<SaplingWitness> for Envelope {
+    fn from(value: SaplingWitness) -> Self {
+        Envelope::new(value.tree().clone())
+            .add_type("SaplingWitness")
+            .add_assertion("filled", value.filled().clone())
+            .add_optional_assertion("cursor", value.cursor().clone())
+    }
+}
+
+impl TryFrom<Envelope> for SaplingWitness {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingWitness").context("SaplingWitness")?;
+        let tree = envelope.try_as().context("tree")?;
+        let filled = envelope.extract_object_for_predicate("filled").context("filled")?;
+        let cursor = envelope.try_optional_object_for_predicate("cursor").context("cursor")?;
+        Ok(Self::with_fields(tree, filled, cursor))
+    }
+}
+
+test_envelope_roundtrip!(SaplingWitness);

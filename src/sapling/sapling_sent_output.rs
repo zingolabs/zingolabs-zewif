@@ -1,3 +1,7 @@
+use anyhow::Context;
+use bc_envelope::prelude::*;
+use crate::{test_envelope_roundtrip, Indexed};
+
 use super::super::{u256, Amount, Blob};
 
 /// Represents a sent output in a Sapling shielded transaction within a Zcash wallet.
@@ -28,9 +32,8 @@ use super::super::{u256, Amount, Blob};
 ///
 /// # Examples
 /// ```
-/// use zewif::{sapling::SaplingSentOutput, Blob, u256, Amount};
-/// use anyhow::Result;
-///
+/// # use zewif::{sapling::SaplingSentOutput, Blob, u256, Amount};
+/// # use anyhow::Result;
 /// # fn example() -> Result<()> {
 /// // Create a new sent output
 /// let mut sent_output = SaplingSentOutput::new();
@@ -55,8 +58,11 @@ use super::super::{u256, Amount, Blob};
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaplingSentOutput {
+    /// The index of the output in the transaction.
+    index: usize,
+
     /// The diversifier used in deriving the recipient's shielded address.
     ///
     /// This 11-byte value is part of the Sapling address construction, allowing multiple
@@ -87,6 +93,16 @@ pub struct SaplingSentOutput {
     rcm: u256,
 }
 
+impl Indexed for SaplingSentOutput {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
+
 impl SaplingSentOutput {
     /// Creates a new `SaplingSentOutput` with default values.
     ///
@@ -99,12 +115,12 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::sapling::SaplingSentOutput;
-    /// 
+    /// # use zewif::sapling::SaplingSentOutput;
     /// let sent_output = SaplingSentOutput::new();
     /// ```
     pub fn new() -> Self {
         Self {
+            index: 0,
             diversifier: Blob::default(),
             receipient_public_key: u256::default(),
             value: Amount::zero(),
@@ -123,8 +139,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, Blob};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, Blob};
     /// let sent_output = SaplingSentOutput::new();
     /// let diversifier = sent_output.diversifier();
     /// ```
@@ -139,8 +154,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, Blob};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, Blob};
     /// let mut sent_output = SaplingSentOutput::new();
     /// let diversifier = Blob::<11>::default();
     /// sent_output.set_diversifier(diversifier);
@@ -160,8 +174,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, u256};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, u256};
     /// let sent_output = SaplingSentOutput::new();
     /// let recipient_pk = sent_output.receipient_public_key();
     /// ```
@@ -176,8 +189,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, u256};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, u256};
     /// let mut sent_output = SaplingSentOutput::new();
     /// let pk = u256::default();
     /// sent_output.set_receipient_public_key(pk);
@@ -196,13 +208,12 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, Amount};
-    /// use anyhow::Result;
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, Amount};
+    /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// let mut sent_output = SaplingSentOutput::new();
     /// sent_output.set_value(Amount::from_u64(10_000_000)?); // 0.1 ZEC
-    /// 
+    ///
     /// let value = sent_output.value();
     /// let zats: i64 = value.into();
     /// assert_eq!(zats, 10_000_000);
@@ -220,9 +231,8 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, Amount};
-    /// use anyhow::Result;
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, Amount};
+    /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// let mut sent_output = SaplingSentOutput::new();
     /// let amount = Amount::from_u64(50_000_000)?; // 0.5 ZEC
@@ -246,8 +256,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, u256};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, u256};
     /// let sent_output = SaplingSentOutput::new();
     /// let rcm = sent_output.rcm();
     /// ```
@@ -262,8 +271,7 @@ impl SaplingSentOutput {
     ///
     /// # Examples
     /// ```
-    /// use zewif::{sapling::SaplingSentOutput, u256};
-    /// 
+    /// # use zewif::{sapling::SaplingSentOutput, u256};
     /// let mut sent_output = SaplingSentOutput::new();
     /// let rcm = u256::default();
     /// sent_output.set_rcm(rcm);
@@ -278,3 +286,50 @@ impl Default for SaplingSentOutput {
         Self::new()
     }
 }
+
+impl From<SaplingSentOutput> for Envelope {
+    fn from(value: SaplingSentOutput) -> Self {
+        Envelope::new(value.index)
+            .add_type("SaplingSentOutput")
+            .add_assertion("diversifier", value.diversifier)
+            .add_assertion("receipient_public_key", value.receipient_public_key)
+            .add_assertion("value", value.value)
+            .add_assertion("rcm", value.rcm)
+    }
+}
+
+impl TryFrom<Envelope> for SaplingSentOutput {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingSentOutput").context("SaplingSentOutput")?;
+        let index = envelope.extract_subject().context("index")?;
+        let diversifier = envelope.extract_object_for_predicate("diversifier").context("diversifier")?;
+        let receipient_public_key = envelope.extract_object_for_predicate("receipient_public_key").context("receipient_public_key")?;
+        let value = envelope.extract_object_for_predicate("value").context("value")?;
+        let rcm = envelope.extract_object_for_predicate("rcm").context("rcm")?;
+
+        Ok(SaplingSentOutput {
+            index,
+            diversifier,
+            receipient_public_key,
+            value,
+            rcm,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SaplingSentOutput {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            diversifier: Blob::random(),
+            receipient_public_key: u256::random(),
+            value: Amount::random(),
+            rcm: u256::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(SaplingSentOutput);

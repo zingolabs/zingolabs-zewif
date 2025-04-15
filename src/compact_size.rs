@@ -32,10 +32,10 @@ use crate::{parse, parser::prelude::*};
 /// # fn example() -> Result<()> {
 /// // Create a buffer with compact size data
 /// let data = vec![0u8; 10]; // Example data
-/// 
+///
 /// // Create a parser
 /// let mut parser = Parser::new(&data);
-/// 
+///
 /// // Parse a compact size from the binary data
 /// let size = parse_compact_size(&mut parser)?;
 /// println!("Parsed compact size: {}", size);
@@ -109,13 +109,13 @@ pub fn parse_compact_size(p: &mut Parser) -> Result<usize> {
 /// # fn example() -> Result<()> {
 /// // Create a buffer with binary data
 /// let data = vec![0u8; 10]; // Example data
-/// 
+///
 /// // Create a parser
 /// let mut p = Parser::new(&data);
-/// 
+///
 /// // Parse a compact size from the binary stream
 /// let size: CompactSize = parse!(&mut p, CompactSize, "vector length")?;
-/// 
+///
 /// // Use the value as a regular usize
 /// let vec_length: usize = *size;
 /// println!("Vector length: {}", size);

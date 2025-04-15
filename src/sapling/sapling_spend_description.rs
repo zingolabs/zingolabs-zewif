@@ -1,5 +1,7 @@
-use crate::impl_attachable;
-use super::super::{Amount, Attachments, BlockHeight, GrothProof, u256};
+use super::super::{Amount, BlockHeight, GrothProof, u256};
+use crate::{test_envelope_roundtrip, Indexed};
+use anyhow::Context;
+use bc_envelope::prelude::*;
 
 /// A description of a spent Sapling note in a shielded transaction.
 ///
@@ -34,14 +36,13 @@ use super::super::{Amount, Attachments, BlockHeight, GrothProof, u256};
 ///
 /// # Examples
 /// ```
-/// use zewif::{Amount, BlockHeight, GrothProof, u256};
-/// use zewif::sapling::SaplingSpendDescription;
-///
+/// # use zewif::{Amount, BlockHeight, GrothProof, u256, Indexed};
+/// # use zewif::sapling::SaplingSpendDescription;
 /// // Create a new spend description
 /// let mut spend = SaplingSpendDescription::new();
 ///
 /// // Set the position of this spend in the transaction
-/// spend.set_spend_index(0);
+/// spend.set_index(0);
 ///
 /// // Set the note value (if known)
 /// let value = Amount::from_u64(100_000_000).unwrap(); // 1 ZEC
@@ -62,10 +63,10 @@ use super::super::{Amount, Attachments, BlockHeight, GrothProof, u256};
 /// // The nullifier will be published on the blockchain
 /// assert_eq!(spend.nullifier(), &nullifier);
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SaplingSpendDescription {
     /// The position of this spend in the transaction's list of Sapling spends
-    spend_index: u32,
+    index: usize,
     /// The value of the input note being spent, if known to the wallet
     value: Option<Amount>,
     /// The block height that the note commitment tree anchor corresponds to
@@ -78,13 +79,23 @@ pub struct SaplingSpendDescription {
     attachments: Attachments,
 }
 
-impl_attachable!(SaplingSpendDescription);
+bc_envelope::impl_attachable!(SaplingSpendDescription);
+
+impl Indexed for SaplingSpendDescription {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+}
 
 impl SaplingSpendDescription {
     /// Creates a new empty SaplingSpendDescription.
     pub fn new() -> Self {
         Self {
-            spend_index: 0,
+            index: 0,
             value: None,
             anchor_height: None,
             nullifier: u256::default(),
@@ -94,10 +105,6 @@ impl SaplingSpendDescription {
     }
 
     // Getters
-    pub fn spend_index(&self) -> u32 {
-        self.spend_index
-    }
-
     pub fn value(&self) -> Option<Amount> {
         self.value
     }
@@ -119,11 +126,6 @@ impl SaplingSpendDescription {
     }
 
     // Setters
-    pub fn set_spend_index(&mut self, spend_index: u32) -> &mut Self {
-        self.spend_index = spend_index;
-        self
-    }
-
     pub fn set_value(&mut self, value: Option<Amount>) -> &mut Self {
         self.value = value;
         self
@@ -144,3 +146,53 @@ impl SaplingSpendDescription {
         self
     }
 }
+
+impl From<SaplingSpendDescription> for Envelope {
+    fn from(value: SaplingSpendDescription) -> Self {
+        let e = Envelope::new(value.index)
+            .add_type("SaplingSpendDescription")
+            .add_optional_assertion("value", value.value)
+            .add_optional_assertion("anchor_height", value.anchor_height)
+            .add_assertion("nullifier", value.nullifier)
+            .add_assertion("zkproof", value.zkproof);
+        value.attachments.add_to_envelope(e)
+    }
+}
+
+impl TryFrom<Envelope> for SaplingSpendDescription {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope.check_type_envelope("SaplingSpendDescription").context("SaplingSpendDescription")?;
+        let index = envelope.extract_subject().context("index")?;
+        let value = envelope.extract_optional_object_for_predicate("value").context("value")?;
+        let anchor_height = envelope.extract_optional_object_for_predicate("anchor_height").context("anchor_height")?;
+        let nullifier = envelope.extract_object_for_predicate("nullifier").context("nullifier")?;
+        let zkproof = envelope.try_object_for_predicate("zkproof").context("zkproof")?;
+        let attachments = Attachments::try_from_envelope(&envelope)?;
+        Ok(SaplingSpendDescription {
+            index,
+            value,
+            anchor_height,
+            nullifier,
+            zkproof,
+            attachments,
+        })
+    }
+}
+
+#[cfg(test)]
+impl crate::RandomInstance for SaplingSpendDescription {
+    fn random() -> Self {
+        Self {
+            index: 0,
+            value: Amount::opt_random(),
+            anchor_height: BlockHeight::opt_random(),
+            nullifier: u256::random(),
+            zkproof: GrothProof::random(),
+            attachments: Attachments::random(),
+        }
+    }
+}
+
+test_envelope_roundtrip!(SaplingSpendDescription);

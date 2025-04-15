@@ -156,6 +156,12 @@ macro_rules! blob {
             }
         }
 
+        impl From<$name> for $crate::Blob<$size> {
+            fn from(obj: $name) -> $crate::Blob<$size> {
+                obj.0
+            }
+        }
+
         impl $crate::parser::Parse for $name {
             /// Parses this type from a binary data stream.
             ///
