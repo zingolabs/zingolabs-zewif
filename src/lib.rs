@@ -18,7 +18,7 @@
 //!
 //! The ZeWIF format is organized hierarchically:
 //!
-//! - [`ZewifTop`]: The root container holding wallets and global transaction data
+//! - [`Zewif`]: The root container holding wallets and global transaction data
 //!   - [`ZewifWallet`]: Individual wallet with accounts and network context
 //!     - [`Account`]: Logical grouping of addresses and transaction references
 //!       - [`Address`]: Individual addresses of various types (transparent, shielded, unified)
@@ -45,10 +45,10 @@
 //! ## Usage Examples
 //!
 //! ```no_run
-//! use zewif::{ZewifTop, ZewifWallet, Network, Account, Address};
+//! use zewif::{Zewif, ZewifWallet, Network, Account, Address};
 //!
 //! // Create a new ZeWIF container
-//! let mut zewif = ZewifTop::new();
+//! let mut zewif = Zewif::new();
 //!
 //! // Create a new wallet for the main network
 //! let mut wallet = ZewifWallet::new(Network::Main);
@@ -147,7 +147,8 @@ mod_use!(u160_type);
 mod_use!(u252_type);
 mod_use!(u256_type);
 mod_use!(unified_address);
-mod_use!(zewif_top);
+mod_use!(zewif_envelope);
+mod_use!(zewif_impl);
 mod_use!(zewif_wallet);
 
 use std::fmt::{self, Display, Formatter, Debug};

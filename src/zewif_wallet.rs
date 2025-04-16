@@ -11,7 +11,7 @@ use bc_envelope::prelude::*;
 /// `ZewifWallet` represents an entire wallet consisting of multiple accounts, all operating
 /// on the same Zcash network. It can optionally include seed material for generating keys.
 /// This structure is the primary container for user wallet data but is not the top level
-/// of the interchange format hierarchy (that's `ZewifTop`).
+/// of the interchange format hierarchy (that's `Zewif`).
 ///
 /// # Zcash Concept Relation
 ///
@@ -109,7 +109,8 @@ impl ZewifWallet {
         &self.accounts
     }
 
-    pub fn add_account(&mut self, account: Account) {
+    pub fn add_account(&mut self, mut account: Account) {
+        account.set_index(self.accounts.len());
         self.accounts.push(account);
     }
 }

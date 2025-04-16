@@ -9,7 +9,7 @@ use super::{Transaction, TxId, ZewifWallet};
 
 /// The top-level container for the Zcash Wallet Interchange Format (ZeWIF).
 ///
-/// `ZewifTop` is the root structure of the ZeWIF hierarchy, serving as a container
+/// `Zewif` is the root structure of the ZeWIF hierarchy, serving as a container
 /// for multiple wallets and a global transaction history. This structure represents
 /// the entirety of the data that would be migrated between different Zcash wallet
 /// implementations.
@@ -18,7 +18,7 @@ use super::{Transaction, TxId, ZewifWallet};
 ///
 /// In the Zcash wallet ecosystem:
 ///
-/// - **Interchange Container**: `ZewifTop` serves as the standardized format for
+/// - **Interchange Container**: `Zewif` serves as the standardized format for
 ///   moving wallet data between different implementations
 /// - **Multi-Wallet Support**: A single interchange file can contain multiple wallets,
 ///   each with its own accounts and configuration
@@ -38,9 +38,9 @@ use super::{Transaction, TxId, ZewifWallet};
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::{ZewifTop, ZewifWallet, Network, Transaction, TxId};
+/// # use zewif::{Zewif, ZewifWallet, Network, Transaction, TxId};
 /// // Create the top-level container
-/// let mut zewif = ZewifTop::new();
+/// let mut zewif = Zewif::new();
 ///
 /// // Add a wallet
 /// let wallet = ZewifWallet::new(Network::Main);
@@ -55,16 +55,16 @@ use super::{Transaction, TxId, ZewifWallet};
 /// let tx_count = zewif.transactions().len();
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct ZewifTop {
+pub struct Zewif {
     id: ARID,
     wallets: Vec<ZewifWallet>,
     transactions: HashMap<TxId, Transaction>,
     attachments: Attachments,
 }
 
-bc_envelope::impl_attachable!(ZewifTop);
+bc_envelope::impl_attachable!(Zewif);
 
-impl ZewifTop {
+impl Zewif {
     pub fn new() -> Self {
         Self {
             id: ARID::new(),
@@ -72,6 +72,10 @@ impl ZewifTop {
             transactions: HashMap::new(),
             attachments: Attachments::new(),
         }
+    }
+
+    pub fn id(&self) -> ARID {
+        self.id
     }
 
     pub fn wallets(&self) -> &Vec<ZewifWallet> {
@@ -104,15 +108,15 @@ impl ZewifTop {
     }
 }
 
-impl Default for ZewifTop {
+impl Default for Zewif {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[rustfmt::skip]
-impl From<ZewifTop> for Envelope {
-    fn from(value: ZewifTop) -> Self {
+impl From<Zewif> for Envelope {
+    fn from(value: Zewif) -> Self {
         let mut e = Envelope::new(value.id)
             .add_type("Zewif");
         e = value.wallets.iter().fold(e, |e, wallet| e.add_assertion("wallet", wallet.clone()));
@@ -122,7 +126,7 @@ impl From<ZewifTop> for Envelope {
 }
 
 #[rustfmt::skip]
-impl TryFrom<Envelope> for ZewifTop {
+impl TryFrom<Envelope> for Zewif {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
@@ -148,7 +152,7 @@ impl TryFrom<Envelope> for ZewifTop {
 
 #[cfg(test)]
 #[rustfmt::skip]
-impl crate::RandomInstance for ZewifTop {
+impl crate::RandomInstance for Zewif {
     fn random() -> Self {
         use crate::SetIndexes;
 
@@ -161,4 +165,4 @@ impl crate::RandomInstance for ZewifTop {
     }
 }
 
-test_envelope_roundtrip!(ZewifTop);
+test_envelope_roundtrip!(Zewif);
