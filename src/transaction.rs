@@ -195,7 +195,12 @@ impl Transaction {
         self.outputs.as_ref()
     }
 
-    pub fn add_output(&mut self, output: TxOut) {
+    pub fn outputs_len(&self) -> usize {
+        self.outputs.as_ref().map_or(0, |v| v.len())
+    }
+
+    pub fn add_output(&mut self, mut output: TxOut) {
+        output.set_index(self.outputs_len());
         self.outputs.get_or_insert_with(Vec::new).push(output);
     }
 
