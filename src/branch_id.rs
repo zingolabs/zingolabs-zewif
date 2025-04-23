@@ -91,7 +91,7 @@ impl crate::RandomInstance for BranchId {
     fn random() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        let random_value: u32 = rng.gen_range(0..=8);
+        let random_value: u32 = rng.gen_range(0..8);
         BranchId(match random_value {
             0 => zcash_protocol::consensus::BranchId::Sprout,
             1 => zcash_protocol::consensus::BranchId::Overwinter,
