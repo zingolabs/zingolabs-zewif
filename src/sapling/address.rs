@@ -27,9 +27,9 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{Blob, Data, sapling::{ShieldedAddress, SaplingIncomingViewingKey, SaplingExtendedSpendingKey}};
+/// # use zewif::{Blob, Data, sapling::{self, SaplingIncomingViewingKey, SaplingExtendedSpendingKey}};
 /// // Create a new Sapling shielded address
-/// let mut address = ShieldedAddress::new("zs1exampleaddress".to_string());
+/// let mut address = sapling::Address::new("zs1exampleaddress".to_string());
 ///
 /// // Associate an incoming viewing key (for monitoring transactions)
 /// let ivk = SaplingIncomingViewingKey::new([0u8; 32]);
@@ -47,9 +47,9 @@ use bc_envelope::prelude::*;
 /// address.set_hd_derivation_path("m/32'/1'/0'/0/5".to_string());
 /// ```
 #[derive(Clone, PartialEq)]
-pub struct ShieldedAddress {
-    /// The actual address string (could encode Sapling, Orchard, etc.).
-    /// This is used as a unique identifier within the wallet.
+pub struct Address {
+    /// The string representaion of the address. This is used as a unique identifier within the
+    /// wallet.
     address: String, // Unique
 
     /// Optional Incoming Viewing Key (IVK) for this address.
@@ -76,7 +76,7 @@ pub struct ShieldedAddress {
     diversifier_index: Option<Blob<11>>,
 }
 
-impl std::fmt::Debug for ShieldedAddress {
+impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SaplingAddress")
             .field("address", &self.address)
@@ -91,9 +91,9 @@ impl std::fmt::Debug for ShieldedAddress {
     }
 }
 
-impl ShieldedAddress {
+impl Address {
     pub fn new(address: String) -> Self {
-        ShieldedAddress {
+        Address {
             address,
             incoming_viewing_key: None,
             spending_key: None,
@@ -161,8 +161,8 @@ impl ShieldedAddress {
     }
 }
 
-impl From<ShieldedAddress> for Envelope {
-    fn from(value: ShieldedAddress) -> Self {
+impl From<Address> for Envelope {
+    fn from(value: Address) -> Self {
         Envelope::new(value.address)
             .add_type("SaplingAddress")
             .add_optional_assertion("incoming_viewing_key", value.incoming_viewing_key)
@@ -172,7 +172,7 @@ impl From<ShieldedAddress> for Envelope {
     }
 }
 
-impl TryFrom<Envelope> for ShieldedAddress {
+impl TryFrom<Envelope> for Address {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
@@ -192,7 +192,7 @@ impl TryFrom<Envelope> for ShieldedAddress {
         let hd_derivation_path = envelope
             .try_optional_object_for_predicate("hd_derivation_path")
             .context("hd_derivation_path")?;
-        Ok(ShieldedAddress {
+        Ok(Address {
             address,
             incoming_viewing_key,
             spending_key,
@@ -203,7 +203,7 @@ impl TryFrom<Envelope> for ShieldedAddress {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for ShieldedAddress {
+impl crate::RandomInstance for Address {
     fn random() -> Self {
         Self {
             address: String::random(),
@@ -215,4 +215,4 @@ impl crate::RandomInstance for ShieldedAddress {
     }
 }
 
-test_envelope_roundtrip!(ShieldedAddress);
+test_envelope_roundtrip!(Address);

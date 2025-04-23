@@ -310,8 +310,8 @@ impl AddressRegistry {
 #[cfg(test)]
 mod tests {
     use crate::{
-        AddressId, AddressRegistry, Network, ProtocolAddress, TransparentAddress,
-        sapling::ShieldedAddress, u256,
+        AddressId, AddressRegistry, Network, ProtocolAddress, sapling, TransparentAddress,
+        u256,
     };
 
     #[test]
@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(addr_id.protocol_type(), "transparent");
 
         // Test sapling address
-        let shielded = ProtocolAddress::Sapling(ShieldedAddress::new("zs1abcdef".to_string()));
+        let shielded = ProtocolAddress::Sapling(sapling::Address::new("zs1abcdef".to_string()));
         let addr_id = AddressId::from_protocol_address(&shielded);
         assert!(matches!(addr_id, AddressId::Sapling(_)));
         assert_eq!(addr_id.protocol_type(), "sapling");

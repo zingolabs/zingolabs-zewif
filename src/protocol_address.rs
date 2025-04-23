@@ -1,4 +1,4 @@
-use super::{TransparentAddress, UnifiedAddress, sapling::ShieldedAddress};
+use super::{TransparentAddress, UnifiedAddress, sapling};
 use crate::test_envelope_roundtrip;
 use bc_envelope::prelude::*;
 
@@ -32,14 +32,14 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{ProtocolAddress, TransparentAddress, sapling::ShieldedAddress, UnifiedAddress};
+/// # use zewif::{ProtocolAddress, TransparentAddress, sapling, UnifiedAddress};
 /// // Create a transparent address
 /// let t_addr = TransparentAddress::new("t1example");
 /// let t_protocol = ProtocolAddress::Transparent(t_addr);
 /// assert!(t_protocol.is_transparent());
 ///
 /// // Create a Sapling address
-/// let s_addr = ShieldedAddress::new("zs1example".to_string());
+/// let s_addr = sapling::Address::new("zs1example".to_string());
 /// let s_protocol = ProtocolAddress::Sapling(s_addr);
 /// assert!(s_protocol.is_sapling());
 ///
@@ -58,8 +58,8 @@ pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
     Transparent(TransparentAddress),
 
-    /// A Sapling address (Z-address).
-    Sapling(ShieldedAddress),
+    /// A shielded address (Z-address). This can include Sapling, Sprout
+    Sapling(sapling::Address),
 
     /// A unified address (U-address) that contains multiple receiver types.
     /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
@@ -78,7 +78,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, TransparentAddress, sapling::ShieldedAddress, UnifiedAddress};
+    /// # use zewif::{ProtocolAddress, TransparentAddress, sapling, UnifiedAddress};
     /// #
     /// // Transparent address
     /// let t_addr = TransparentAddress::new("t1example");
@@ -86,7 +86,7 @@ impl ProtocolAddress {
     /// assert_eq!(protocol.as_string(), "t1example");
     ///
     /// // Shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
+    /// let s_addr = sapling::Address::new("zs1example".to_string());
     /// let protocol = ProtocolAddress::Sapling(s_addr);
     /// assert_eq!(protocol.as_string(), "zs1example");
     /// ```
@@ -105,10 +105,10 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling, TransparentAddress};
     /// #
     /// // Create a Sapling address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
+    /// let s_addr = sapling::Address::new("zs1example".to_string());
     /// let address = ProtocolAddress::Sapling(s_addr);
     /// assert!(address.is_sapling());
     ///
@@ -128,7 +128,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling, TransparentAddress};
     /// #
     /// // Create a transparent address
     /// let t_addr = TransparentAddress::new("t1example");
@@ -136,7 +136,7 @@ impl ProtocolAddress {
     /// assert!(address.is_transparent());
     ///
     /// // Create a shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
+    /// let s_addr = sapling::Address::new("zs1example".to_string());
     /// let address = ProtocolAddress::Sapling(s_addr);
     /// assert!(!address.is_transparent());
     /// ```
@@ -201,7 +201,7 @@ impl crate::RandomInstance for ProtocolAddress {
         let choice = rand::Rng::gen_range(&mut rng, 0..3);
         match choice {
             0 => ProtocolAddress::Transparent(TransparentAddress::random()),
-            1 => ProtocolAddress::Sapling(ShieldedAddress::random()),
+            1 => ProtocolAddress::Sapling(sapling::Address::random()),
             _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
         }
     }

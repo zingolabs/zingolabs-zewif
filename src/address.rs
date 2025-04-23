@@ -50,6 +50,8 @@ use super::ProtocolAddress;
 #[derive(Clone, PartialEq)]
 pub struct Address {
     /// The index of this address in the wallet
+    /// TODO: I'm not sure that this is useful; if it's intended to be used as a primary key then
+    /// it should be of some non-conflicting type such as a UUID.
     index: usize,
 
     /// The underlying protocol-specific address
@@ -225,7 +227,7 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, sapling::ShieldedAddress};
+    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, sapling};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
     ///     TransparentAddress::new("t1example")
@@ -234,7 +236,7 @@ impl Address {
     /// // Swap the address out for a Sapling address
     /// if let ProtocolAddress::Transparent(_) = address.address() {
     ///     *address.address_mut() = ProtocolAddress::Sapling(
-    ///         ShieldedAddress::new("zs1example".to_string())
+    ///         sapling::Address::new("zs1example".to_string())
     ///     );
     /// }
     ///

@@ -1,6 +1,6 @@
 use bc_envelope::prelude::*;
 use std::collections::{HashMap, HashSet};
-use crate::{test_envelope_roundtrip, Blob, Data, ReceiverType, sapling::ShieldedAddress, TransparentAddress};
+use crate::{test_envelope_roundtrip, Blob, Data, ReceiverType, sapling, TransparentAddress};
 use anyhow::Context;
 
 /// A multi-protocol Zcash address that can contain components from different Zcash protocols.
@@ -31,8 +31,6 @@ use anyhow::Context;
 ///
 /// - **UA string**: The full unified address string when available
 /// - **Diversifier index**: Used to deterministically derive addresses from keys
-/// - **Receiver types**: Which protocols are included in this address
-/// - **Component addresses**: The individual addresses that make up the UA
 /// - **HD path information**: For addresses derived from hierarchical deterministic wallets
 ///
 /// # Implementation Note
@@ -49,7 +47,7 @@ use anyhow::Context;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{UnifiedAddress, TransparentAddress, sapling::ShieldedAddress, ReceiverType, Blob};
+/// # use zewif::{UnifiedAddress, TransparentAddress, sapling, ReceiverType, Blob};
 /// // Create a new unified address
 /// let mut ua = UnifiedAddress::new("u1exampleaddress".to_string());
 ///
@@ -63,7 +61,7 @@ use anyhow::Context;
 /// ua.set_transparent_component(t_addr);
 ///
 /// // Add a sapling component
-/// let s_addr = ShieldedAddress::new("zs1saplingpart".to_string());
+/// let s_addr = sapling::Address::new("zs1saplingpart".to_string());
 /// ua.set_sapling_component(s_addr);
 ///
 /// // Check which components are present
@@ -97,7 +95,7 @@ pub struct UnifiedAddress {
     transparent_component: Option<TransparentAddress>,
 
     /// Sapling component of this unified address (if present)
-    sapling_component: Option<ShieldedAddress>,
+    sapling_component: Option<sapling::Address>,
 
     /// Orchard component raw data (if present)
     /// Since we don't have a dedicated OrchardAddress type yet,
@@ -198,12 +196,12 @@ impl UnifiedAddress {
     }
 
     /// Get the sapling component of this unified address, if present
-    pub fn sapling_component(&self) -> Option<&ShieldedAddress> {
+    pub fn sapling_component(&self) -> Option<&sapling::Address> {
         self.sapling_component.as_ref()
     }
 
     /// Set the sapling component of this unified address
-    pub fn set_sapling_component(&mut self, address: ShieldedAddress) {
+    pub fn set_sapling_component(&mut self, address: sapling::Address) {
         let address_str = address.address().to_string();
         self.sapling_component = Some(address);
         self.add_receiver_type(ReceiverType::Sapling);
@@ -302,7 +300,7 @@ impl crate::RandomInstance for UnifiedAddress {
             receiver_types: HashSet::random(),
             component_addresses: HashMap::random(),
             transparent_component: TransparentAddress::opt_random(),
-            sapling_component: ShieldedAddress::opt_random(),
+            sapling_component: sapling::Address::opt_random(),
             orchard_component_data: Data::opt_random(),
             hd_derivation_path: String::opt_random(),
         }
