@@ -1,5 +1,4 @@
-use super::{TransparentAddress, UnifiedAddress, sapling};
-use crate::test_envelope_roundtrip;
+use crate::{UnifiedAddress, sapling, transparent};
 use bc_envelope::prelude::*;
 
 /// A protocol-specific Zcash address representation without additional metadata.
@@ -32,9 +31,9 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{ProtocolAddress, TransparentAddress, sapling, UnifiedAddress};
+/// # use zewif::{ProtocolAddress, transparent, sapling, UnifiedAddress};
 /// // Create a transparent address
-/// let t_addr = TransparentAddress::new("t1example");
+/// let t_addr = transparent::Address::new("t1example");
 /// let t_protocol = ProtocolAddress::Transparent(t_addr);
 /// assert!(t_protocol.is_transparent());
 ///
@@ -56,7 +55,7 @@ use bc_envelope::prelude::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
-    Transparent(TransparentAddress),
+    Transparent(transparent::Address),
 
     /// A shielded address (Z-address). This can include Sapling, Sprout
     Sapling(sapling::Address),
@@ -78,10 +77,10 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, TransparentAddress, sapling, UnifiedAddress};
+    /// # use zewif::{ProtocolAddress, transparent, sapling, UnifiedAddress};
     /// #
     /// // Transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol = ProtocolAddress::Transparent(t_addr);
     /// assert_eq!(protocol.as_string(), "t1example");
     ///
@@ -105,7 +104,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling, transparent};
     /// #
     /// // Create a Sapling address
     /// let s_addr = sapling::Address::new("zs1example".to_string());
@@ -113,7 +112,7 @@ impl ProtocolAddress {
     /// assert!(address.is_sapling());
     ///
     /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let address = ProtocolAddress::Transparent(t_addr);
     /// assert!(!address.is_sapling());
     /// ```
@@ -128,10 +127,10 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling, transparent};
     /// #
     /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let address = ProtocolAddress::Transparent(t_addr);
     /// assert!(address.is_transparent());
     ///
@@ -151,7 +150,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, transparent};
     /// #
     /// // Create a unified address
     /// let u_addr = UnifiedAddress::new("u1example".to_string());
@@ -159,7 +158,7 @@ impl ProtocolAddress {
     /// assert!(address.is_unified());
     ///
     /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let address = ProtocolAddress::Transparent(t_addr);
     /// assert!(!address.is_unified());
     /// ```
@@ -200,11 +199,17 @@ impl crate::RandomInstance for ProtocolAddress {
         let mut rng = rand::thread_rng();
         let choice = rand::Rng::gen_range(&mut rng, 0..3);
         match choice {
-            0 => ProtocolAddress::Transparent(TransparentAddress::random()),
+            0 => ProtocolAddress::Transparent(transparent::Address::random()),
             1 => ProtocolAddress::Sapling(sapling::Address::random()),
             _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
         }
     }
 }
 
-test_envelope_roundtrip!(ProtocolAddress);
+#[cfg(test)]
+mod tests {
+    use super::ProtocolAddress;
+    use crate::test_envelope_roundtrip;
+
+    test_envelope_roundtrip!(ProtocolAddress);
+}

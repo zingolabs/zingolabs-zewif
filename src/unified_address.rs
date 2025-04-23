@@ -41,7 +41,7 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{UnifiedAddress, TransparentAddress, ReceiverType, Blob};
+/// # use zewif::{UnifiedAddress, ReceiverType, Blob};
 /// // Create a new unified address
 /// let mut ua = UnifiedAddress::new("u1exampleaddress".to_string());
 ///

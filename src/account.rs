@@ -38,7 +38,7 @@ use super::{Address, OrchardSentOutput, TxId, sapling::SaplingSentOutput};
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::{Account, Address, TxId, ProtocolAddress, TransparentAddress};
+/// # use zewif::{Account, Address, TxId, ProtocolAddress, transparent};
 /// #
 /// // Create a new account
 /// let mut account = Account::new();
@@ -49,7 +49,7 @@ use super::{Address, OrchardSentOutput, TxId, sapling::SaplingSentOutput};
 ///
 /// // In practice, you would have real addresses and transaction IDs
 /// // Create a transparent address (as an example)
-/// let t_addr = TransparentAddress::new("t1ExampleAddress".to_string());
+/// let t_addr = transparent::Address::new("t1ExampleAddress".to_string());
 /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
 /// let txid = TxId::from_bytes([0u8; 32]);
 ///

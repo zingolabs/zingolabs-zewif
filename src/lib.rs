@@ -93,6 +93,7 @@ mod_use!(test_utils);
 // Modules requiring qualified paths
 pub mod parser;
 pub mod sapling;
+pub mod transparent;
 
 // Modules that can use unqualified paths
 mod_use!(account);
@@ -130,14 +131,11 @@ mod_use!(script);
 mod_use!(seconds_since_epoch);
 mod_use!(seed);
 mod_use!(seed_material);
-mod_use!(spending_key);
 mod_use!(sprout_proof);
 mod_use!(sprout_witness);
 mod_use!(string_utils);
 mod_use!(transaction_status);
 mod_use!(transaction);
-mod_use!(transparent_address);
-mod_use!(transparent_spend_authority);
 mod_use!(tx_in);
 mod_use!(tx_out_point);
 mod_use!(tx_out);

@@ -32,10 +32,10 @@ use super::ProtocolAddress;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+/// # use zewif::{Address, ProtocolAddress, transparent};
 /// #
 /// // Create a transparent address
-/// let t_addr = TransparentAddress::new("t1exampleaddress");
+/// let t_addr = transparent::Address::new("t1exampleaddress");
 /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
 ///
 /// // Wrap it in an Address with metadata
@@ -101,9 +101,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let address = Address::new(protocol_addr);
     /// ```
@@ -124,9 +124,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let mut address = Address::new(protocol_addr);
     ///
@@ -144,10 +144,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// // Initially there is no purpose
@@ -168,10 +168,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// address.set_purpose("Donations".to_string());
@@ -187,10 +187,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1exampleaddress")
+    ///     transparent::Address::new("t1exampleaddress")
     /// ));
     ///
     /// let addr_string = address.as_string();
@@ -207,9 +207,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let address = Address::new(protocol_addr);
     ///
@@ -227,10 +227,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, sapling};
+    /// # use zewif::{Address, ProtocolAddress, transparent, sapling};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// // Swap the address out for a Sapling address
@@ -253,10 +253,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// address.set_name("Cold Storage".to_string());
@@ -273,14 +273,14 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1old")
+    ///     transparent::Address::new("t1old")
     /// ));
     ///
     /// // Replace with a new address
-    /// let new_addr = TransparentAddress::new("t1new");
+    /// let new_addr = transparent::Address::new("t1new");
     /// address.set_address(ProtocolAddress::Transparent(new_addr));
     ///
     /// assert_eq!(address.as_string(), "t1new");

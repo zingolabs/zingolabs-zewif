@@ -69,10 +69,10 @@ impl AddressId {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{AddressId, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{AddressId, ProtocolAddress, transparent};
     /// #
     /// // Create a transparent protocol address
-    /// let transparent = ProtocolAddress::Transparent(TransparentAddress::new("t1abcdef".to_string()));
+    /// let transparent = ProtocolAddress::Transparent(transparent::Address::new("t1abcdef".to_string()));
     ///
     /// // Convert to AddressId
     /// let addr_id = AddressId::from_protocol_address(&transparent);
@@ -309,16 +309,13 @@ impl AddressRegistry {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        AddressId, AddressRegistry, Network, ProtocolAddress, sapling, TransparentAddress,
-        u256,
-    };
+    use crate::{AddressId, AddressRegistry, Network, ProtocolAddress, sapling, transparent, u256};
 
     #[test]
     fn test_address_id_from_protocol_address() {
         // Test transparent address
         let transparent =
-            ProtocolAddress::Transparent(TransparentAddress::new("t1abcdef".to_string()));
+            ProtocolAddress::Transparent(transparent::Address::new("t1abcdef".to_string()));
         let addr_id = AddressId::from_protocol_address(&transparent);
         assert!(matches!(addr_id, AddressId::Transparent(_)));
         assert_eq!(addr_id.protocol_type(), "transparent");
