@@ -130,7 +130,6 @@ mod_use!(script);
 mod_use!(seconds_since_epoch);
 mod_use!(seed);
 mod_use!(seed_material);
-mod_use!(shielded_address);
 mod_use!(spending_key);
 mod_use!(sprout_proof);
 mod_use!(sprout_witness);

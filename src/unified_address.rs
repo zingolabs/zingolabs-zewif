@@ -1,6 +1,6 @@
 use bc_envelope::prelude::*;
 use std::collections::{HashMap, HashSet};
-use crate::{test_envelope_roundtrip, Blob, Data, ReceiverType, ShieldedAddress, TransparentAddress};
+use crate::{test_envelope_roundtrip, Blob, Data, ReceiverType, sapling::ShieldedAddress, TransparentAddress};
 use anyhow::Context;
 
 /// A multi-protocol Zcash address that can contain components from different Zcash protocols.
@@ -49,7 +49,7 @@ use anyhow::Context;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{UnifiedAddress, TransparentAddress, ShieldedAddress, ReceiverType, Blob};
+/// # use zewif::{UnifiedAddress, TransparentAddress, sapling::ShieldedAddress, ReceiverType, Blob};
 /// // Create a new unified address
 /// let mut ua = UnifiedAddress::new("u1exampleaddress".to_string());
 ///

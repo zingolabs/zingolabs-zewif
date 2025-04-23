@@ -2,7 +2,7 @@ use crate::{DebugOption, Indexed, test_envelope_roundtrip};
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use super::{ProtocolAddress, ShieldedAddress, TransparentAddress, UnifiedAddress};
+use super::{ProtocolAddress, TransparentAddress, UnifiedAddress, sapling::ShieldedAddress};
 
 /// A high-level address representation with metadata in a Zcash wallet.
 ///
@@ -225,7 +225,7 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, ShieldedAddress};
+    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, sapling::ShieldedAddress};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
     ///     TransparentAddress::new("t1example")
@@ -294,7 +294,7 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
     /// #
     /// // Create a shielded address
     /// let s_addr = ShieldedAddress::new("zs1example".to_string());
@@ -317,7 +317,7 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
     /// #
     /// // Create a transparent address
     /// let t_addr = TransparentAddress::new("t1example");
@@ -367,7 +367,7 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, UnifiedAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, UnifiedAddress};
     /// #
     /// // Direct shielded address
     /// let s_addr = ShieldedAddress::new("zs1example".to_string());
@@ -468,11 +468,21 @@ impl TryFrom<Envelope> for Address {
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
         envelope.check_type_envelope("Address").context("Address")?;
         let index = envelope.extract_subject().context("index")?;
-        let address = envelope.try_object_for_predicate("address").context("address")?;
+        let address = envelope
+            .try_object_for_predicate("address")
+            .context("address")?;
         let name = envelope.try_object_for_predicate("name").context("name")?;
-        let purpose = envelope.try_optional_object_for_predicate("purpose").context("purpose")?;
+        let purpose = envelope
+            .try_optional_object_for_predicate("purpose")
+            .context("purpose")?;
         let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
-        Ok(Address { index, address, name, purpose, attachments })
+        Ok(Address {
+            index,
+            address,
+            name,
+            purpose,
+            attachments,
+        })
     }
 }
 

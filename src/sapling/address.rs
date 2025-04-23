@@ -1,6 +1,5 @@
-use super::Data;
-use super::{SpendingKey, sapling::SaplingIncomingViewingKey};
-use crate::{NoQuotesDebugOption, test_envelope_roundtrip};
+use super::SaplingIncomingViewingKey;
+use crate::{Data, NoQuotesDebugOption, SpendingKey, test_envelope_roundtrip};
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
@@ -37,7 +36,10 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{ShieldedAddress, SpendingKey, sapling::SaplingIncomingViewingKey, Blob, Data};
+/// # use zewif::{
+/// #   Blob, Data, SpendingKey,
+/// #   sapling::{ShieldedAddress, SaplingIncomingViewingKey, SaplingExtendedSpendingKey}
+/// # };
 /// // Create a new Sapling shielded address
 /// let mut address = ShieldedAddress::new("zs1exampleaddress".to_string());
 ///
@@ -47,8 +49,8 @@ use bc_envelope::prelude::*;
 /// address.set_incoming_viewing_key(ivk);
 ///
 /// // For addresses with spending capability, add a spending key
-/// let raw_key_data = Blob::<32>::default();
-/// let spending_key = SpendingKey::new_raw(raw_key_data);
+/// let raw_key_data = SaplingExtendedSpendingKey::new([0u8; 169]);
+/// let spending_key = SpendingKey::Sapling(raw_key_data);
 /// address.set_spending_key(spending_key);
 ///
 /// // Set the diversifier if available
@@ -192,12 +194,22 @@ impl TryFrom<Envelope> for ShieldedAddress {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("ShieldedAddress").context("ShieldedAddress")?;
+        envelope
+            .check_type_envelope("ShieldedAddress")
+            .context("ShieldedAddress")?;
         let address = envelope.extract_subject().context("address")?;
-        let incoming_viewing_key = envelope.try_optional_object_for_predicate("incoming_viewing_key").context("incoming_viewing_key")?;
-        let spending_key = envelope.try_optional_object_for_predicate("spending_key").context("spending_key")?;
-        let diversifier = envelope.try_optional_object_for_predicate("diversifier").context("diversifier")?;
-        let hd_derivation_path = envelope.try_optional_object_for_predicate("hd_derivation_path").context("hd_derivation_path")?;
+        let incoming_viewing_key = envelope
+            .try_optional_object_for_predicate("incoming_viewing_key")
+            .context("incoming_viewing_key")?;
+        let spending_key = envelope
+            .try_optional_object_for_predicate("spending_key")
+            .context("spending_key")?;
+        let diversifier = envelope
+            .try_optional_object_for_predicate("diversifier")
+            .context("diversifier")?;
+        let hd_derivation_path = envelope
+            .try_optional_object_for_predicate("hd_derivation_path")
+            .context("hd_derivation_path")?;
         Ok(ShieldedAddress {
             address,
             incoming_viewing_key,

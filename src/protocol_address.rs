@@ -1,4 +1,4 @@
-use super::{ShieldedAddress, TransparentAddress, UnifiedAddress};
+use super::{sapling::ShieldedAddress, TransparentAddress, UnifiedAddress};
 use crate::test_envelope_roundtrip;
 use bc_envelope::prelude::*;
 
@@ -32,7 +32,7 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{ProtocolAddress, TransparentAddress, ShieldedAddress, UnifiedAddress};
+/// # use zewif::{ProtocolAddress, TransparentAddress, sapling::ShieldedAddress, UnifiedAddress};
 /// // Create a transparent address
 /// let t_addr = TransparentAddress::new("t1example");
 /// let t_protocol = ProtocolAddress::Transparent(t_addr);
@@ -78,7 +78,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, TransparentAddress, ShieldedAddress, UnifiedAddress};
+    /// # use zewif::{ProtocolAddress, TransparentAddress, sapling::ShieldedAddress, UnifiedAddress};
     /// #
     /// // Transparent address
     /// let t_addr = TransparentAddress::new("t1example");
@@ -109,7 +109,7 @@ impl ProtocolAddress {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, ShieldedAddress, UnifiedAddress};
+    /// # use zewif::{ProtocolAddress, sapling::ShieldedAddress, UnifiedAddress};
     /// #
     /// // Direct shielded address
     /// let s_addr = ShieldedAddress::new("zs1example".to_string());

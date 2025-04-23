@@ -96,8 +96,8 @@ impl AddressId {
                     // Default to Sapling if we can't determine the type
                     Self::Sapling(addr_str.to_string())
                 }
-            },
-            ProtocolAddress::Unified(addr) => Self::Unified(addr.address().to_string())
+            }
+            ProtocolAddress::Unified(addr) => Self::Unified(addr.address().to_string()),
         }
     }
 
@@ -323,8 +323,8 @@ impl AddressRegistry {
 #[cfg(test)]
 mod tests {
     use crate::{
-        AddressId, AddressRegistry, Network, ProtocolAddress, ShieldedAddress, TransparentAddress,
-        u256,
+        AddressId, AddressRegistry, Network, ProtocolAddress, TransparentAddress,
+        sapling::ShieldedAddress, u256,
     };
 
     #[test]
