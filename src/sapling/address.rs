@@ -1,4 +1,4 @@
-use super::{SaplingExtendedSpendingKey, SaplingIncomingViewingKey};
+use super::{SaplingExtendedFullViewingKey, SaplingExtendedSpendingKey, SaplingIncomingViewingKey};
 use crate::{Blob, NoQuotesDebugOption, test_envelope_roundtrip};
 
 use anyhow::Context;
@@ -59,6 +59,14 @@ pub struct Address {
     /// "watch-only" wallet functionality where spending keys aren't available.
     incoming_viewing_key: Option<SaplingIncomingViewingKey>,
 
+    /// Optional Incoming Viewing Key (IVK) for this address.
+    ///
+    /// When present, this 32-byte key allows the wallet to detect and view transactions involving
+    /// funds associated with this address without granting spending capability. This is
+    /// particularly important for "watch-only" wallet functionality where spending keys aren't
+    /// available.
+    full_viewing_key: Option<SaplingExtendedFullViewingKey>,
+
     /// Optional spending key for this address.
     ///
     /// When present, this key allows spending funds sent to this address. During migration,
@@ -96,6 +104,7 @@ impl Address {
         Address {
             address,
             incoming_viewing_key: None,
+            full_viewing_key: None,
             spending_key: None,
             diversifier_index: None,
             hd_derivation_path: None,
@@ -134,6 +143,14 @@ impl Address {
         self.incoming_viewing_key = Some(ivk);
     }
 
+    pub fn full_viewing_key(&self) -> Option<&SaplingExtendedFullViewingKey> {
+        self.full_viewing_key.as_ref()
+    }
+
+    pub fn set_full_viewing_key(&mut self, key: SaplingExtendedFullViewingKey) {
+        self.full_viewing_key = Some(key);
+    }
+
     pub fn spending_key(&self) -> Option<&SaplingExtendedSpendingKey> {
         self.spending_key.as_ref()
     }
@@ -166,6 +183,7 @@ impl From<Address> for Envelope {
         Envelope::new(value.address)
             .add_type("SaplingAddress")
             .add_optional_assertion("incoming_viewing_key", value.incoming_viewing_key)
+            .add_optional_assertion("full_viewing_key", value.full_viewing_key)
             .add_optional_assertion("spending_key", value.spending_key)
             .add_optional_assertion("diversifier_index", value.diversifier_index)
             .add_optional_assertion("hd_derivation_path", value.hd_derivation_path)
@@ -183,6 +201,9 @@ impl TryFrom<Envelope> for Address {
         let incoming_viewing_key = envelope
             .try_optional_object_for_predicate("incoming_viewing_key")
             .context("incoming_viewing_key")?;
+        let full_viewing_key = envelope
+            .try_optional_object_for_predicate("full_viewing_key")
+            .context("full_viewing_key")?;
         let spending_key = envelope
             .try_optional_object_for_predicate("spending_key")
             .context("spending_key")?;
@@ -195,6 +216,7 @@ impl TryFrom<Envelope> for Address {
         Ok(Address {
             address,
             incoming_viewing_key,
+            full_viewing_key,
             spending_key,
             diversifier_index,
             hd_derivation_path,
@@ -208,6 +230,7 @@ impl crate::RandomInstance for Address {
         Self {
             address: String::random(),
             incoming_viewing_key: SaplingIncomingViewingKey::opt_random(),
+            full_viewing_key: SaplingExtendedFullViewingKey::opt_random(),
             spending_key: SaplingExtendedSpendingKey::opt_random(),
             diversifier_index: Blob::<11>::opt_random(),
             hd_derivation_path: String::opt_random(),
