@@ -1,4 +1,4 @@
-use super::{sapling::ShieldedAddress, TransparentAddress, UnifiedAddress};
+use super::{TransparentAddress, UnifiedAddress, sapling::ShieldedAddress};
 use crate::test_envelope_roundtrip;
 use bc_envelope::prelude::*;
 
@@ -36,17 +36,17 @@ use bc_envelope::prelude::*;
 /// // Create a transparent address
 /// let t_addr = TransparentAddress::new("t1example");
 /// let t_protocol = ProtocolAddress::Transparent(t_addr);
-/// assert!(t_protocol.as_transparent().is_some());
+/// assert!(t_protocol.is_transparent());
 ///
-/// // Create a shielded address
+/// // Create a Sapling address
 /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-/// let s_protocol = ProtocolAddress::Shielded(s_addr);
-/// assert!(s_protocol.as_shielded().is_some());
+/// let s_protocol = ProtocolAddress::Sapling(s_addr);
+/// assert!(s_protocol.is_sapling());
 ///
 /// // Create a unified address
 /// let u_addr = UnifiedAddress::new("u1example".to_string());
 /// let u_protocol = ProtocolAddress::Unified(Box::new(u_addr));
-/// assert!(u_protocol.as_unified().is_some());
+/// assert!(u_protocol.is_unified());
 ///
 /// // All protocol addresses can be converted to strings
 /// assert!(t_protocol.as_string().starts_with("t1"));
@@ -58,8 +58,8 @@ pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
     Transparent(TransparentAddress),
 
-    /// A shielded address (Z-address). This can include Sapling, Sprout, or Orchard formats.
-    Shielded(ShieldedAddress),
+    /// A Sapling address (Z-address).
+    Sapling(ShieldedAddress),
 
     /// A unified address (U-address) that contains multiple receiver types.
     /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
@@ -87,109 +87,84 @@ impl ProtocolAddress {
     ///
     /// // Shielded address
     /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let protocol = ProtocolAddress::Shielded(s_addr);
+    /// let protocol = ProtocolAddress::Sapling(s_addr);
     /// assert_eq!(protocol.as_string(), "zs1example");
     /// ```
     pub fn as_string(&self) -> String {
         match self {
             ProtocolAddress::Transparent(addr) => addr.address().to_string(),
-            ProtocolAddress::Shielded(addr) => addr.address().to_string(),
+            ProtocolAddress::Sapling(addr) => addr.address().to_string(),
             ProtocolAddress::Unified(addr) => addr.address().to_string(),
         }
     }
 
-    /// Returns the underlying shielded address, if available.
-    ///
-    /// This method returns the shielded address in one of two cases:
-    /// 1. When this is directly a shielded address
-    /// 2. When this is a unified address with a sapling component
+    /// Returns true if this is a Sapling address.
     ///
     /// # Returns
-    /// `Some(&ShieldedAddress)` if a shielded component is present, `None` otherwise.
+    /// `true` if the address is a Sapling address (z-address), `false` otherwise.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, sapling::ShieldedAddress, UnifiedAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
     /// #
-    /// // Direct shielded address
+    /// // Create a Sapling address
     /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let protocol = ProtocolAddress::Shielded(s_addr);
-    /// assert!(protocol.as_shielded().is_some());
+    /// let address = ProtocolAddress::Sapling(s_addr);
+    /// assert!(address.is_sapling());
     ///
-    /// // Unified address with sapling component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let s_component = ShieldedAddress::new("zs1sapling".to_string());
-    /// u_addr.set_sapling_component(s_component);
-    ///
-    /// let protocol = ProtocolAddress::Unified(Box::new(u_addr));
-    /// assert!(protocol.as_shielded().is_some());
-    /// ```
-    pub fn as_shielded(&self) -> Option<&ShieldedAddress> {
-        match self {
-            ProtocolAddress::Shielded(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.sapling_component(),
-            _ => None,
-        }
-    }
-
-    /// Returns the underlying transparent address, if available.
-    ///
-    /// This method returns the transparent address in one of two cases:
-    /// 1. When this is directly a transparent address
-    /// 2. When this is a unified address with a transparent component
-    ///
-    /// # Returns
-    /// `Some(&TransparentAddress)` if a transparent component is present, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{ProtocolAddress, TransparentAddress, UnifiedAddress};
-    /// #
-    /// // Direct transparent address
+    /// // Create a transparent address
     /// let t_addr = TransparentAddress::new("t1example");
-    /// let protocol = ProtocolAddress::Transparent(t_addr);
-    /// assert!(protocol.as_transparent().is_some());
-    ///
-    /// // Unified address with transparent component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let t_component = TransparentAddress::new("t1transparent");
-    /// u_addr.set_transparent_component(t_component);
-    ///
-    /// let protocol = ProtocolAddress::Unified(Box::new(u_addr));
-    /// assert!(protocol.as_transparent().is_some());
+    /// let address = ProtocolAddress::Transparent(t_addr);
+    /// assert!(!address.is_sapling());
     /// ```
-    pub fn as_transparent(&self) -> Option<&TransparentAddress> {
-        match self {
-            ProtocolAddress::Transparent(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.transparent_component(),
-            _ => None,
-        }
+    pub fn is_sapling(&self) -> bool {
+        matches!(self, ProtocolAddress::Sapling(_))
     }
 
-    /// Returns the underlying unified address, if this is a unified address.
+    /// Returns true if this is a transparent address.
     ///
     /// # Returns
-    /// `Some(&UnifiedAddress)` if this is a unified address, `None` otherwise.
+    /// `true` if the address is a transparent address (t-address), `false` otherwise.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{ProtocolAddress, UnifiedAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
     /// #
-    /// // Unified address
+    /// // Create a transparent address
+    /// let t_addr = TransparentAddress::new("t1example");
+    /// let address = ProtocolAddress::Transparent(t_addr);
+    /// assert!(address.is_transparent());
+    ///
+    /// // Create a shielded address
+    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
+    /// let address = ProtocolAddress::Sapling(s_addr);
+    /// assert!(!address.is_transparent());
+    /// ```
+    pub fn is_transparent(&self) -> bool {
+        matches!(self, ProtocolAddress::Transparent(_))
+    }
+
+    /// Returns true if this is a unified address.
+    ///
+    /// # Returns
+    /// `true` if the address is a unified address (u-address), `false` otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
+    /// #
+    /// // Create a unified address
     /// let u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let protocol = ProtocolAddress::Unified(Box::new(u_addr));
-    /// assert!(protocol.as_unified().is_some());
+    /// let address = ProtocolAddress::Unified(Box::new(u_addr));
+    /// assert!(address.is_unified());
     ///
-    /// // Non-unified address
+    /// // Create a transparent address
     /// let t_addr = TransparentAddress::new("t1example");
-    /// let protocol = ProtocolAddress::Transparent(t_addr);
-    /// assert!(protocol.as_unified().is_none());
+    /// let address = ProtocolAddress::Transparent(t_addr);
+    /// assert!(!address.is_unified());
     /// ```
-    pub fn as_unified(&self) -> Option<&UnifiedAddress> {
-        match self {
-            ProtocolAddress::Unified(addr) => Some(&**addr),
-            _ => None,
-        }
+    pub fn is_unified(&self) -> bool {
+        matches!(self, ProtocolAddress::Unified(_))
     }
 }
 
@@ -197,7 +172,7 @@ impl From<ProtocolAddress> for Envelope {
     fn from(value: ProtocolAddress) -> Self {
         match value {
             ProtocolAddress::Transparent(addr) => addr.into(),
-            ProtocolAddress::Shielded(addr) => addr.into(),
+            ProtocolAddress::Sapling(addr) => addr.into(),
             ProtocolAddress::Unified(addr) => (*addr).into(),
         }
     }
@@ -209,8 +184,8 @@ impl TryFrom<Envelope> for ProtocolAddress {
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
         if envelope.has_type_envelope("TransparentAddress") {
             Ok(ProtocolAddress::Transparent(envelope.try_into()?))
-        } else if envelope.has_type_envelope("ShieldedAddress") {
-            Ok(ProtocolAddress::Shielded(envelope.try_into()?))
+        } else if envelope.has_type_envelope("SaplingAddress") {
+            Ok(ProtocolAddress::Sapling(envelope.try_into()?))
         } else if envelope.has_type_envelope("UnifiedAddress") {
             Ok(ProtocolAddress::Unified(Box::new(envelope.try_into()?)))
         } else {
@@ -226,7 +201,7 @@ impl crate::RandomInstance for ProtocolAddress {
         let choice = rand::Rng::gen_range(&mut rng, 0..3);
         match choice {
             0 => ProtocolAddress::Transparent(TransparentAddress::random()),
-            1 => ProtocolAddress::Shielded(ShieldedAddress::random()),
+            1 => ProtocolAddress::Sapling(ShieldedAddress::random()),
             _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
         }
     }

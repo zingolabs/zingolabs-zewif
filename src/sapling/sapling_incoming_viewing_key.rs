@@ -27,7 +27,7 @@
 //! use zewif::sapling::SaplingIncomingViewingKey;
 //! use zewif::Blob;
 //!
-//! // Create an incoming viewing key from raw bytes
+//! // Wrap the raw bytes of an encoded Sapling incoming viewing key.
 //! let raw_bytes = [0u8; 32]; // In practice, this would be actual key material
 //! let ivk = SaplingIncomingViewingKey::new(raw_bytes);
 //!

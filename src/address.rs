@@ -2,7 +2,7 @@ use crate::{DebugOption, Indexed, test_envelope_roundtrip};
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use super::{ProtocolAddress, TransparentAddress, UnifiedAddress, sapling::ShieldedAddress};
+use super::ProtocolAddress;
 
 /// A high-level address representation with metadata in a Zcash wallet.
 ///
@@ -19,7 +19,7 @@ use super::{ProtocolAddress, TransparentAddress, UnifiedAddress, sapling::Shield
 /// address protocols:
 ///
 /// - **Transparent addresses**: Bitcoin-compatible addresses (t-prefixed)
-/// - **Shielded addresses**: Privacy-focused Sapling/Orchard addresses (z-prefixed)
+/// - **Sapling addresses**: Shielded Sapling protocol addresses (z-prefixed)
 /// - **Unified addresses**: Multi-protocol addresses (u-prefixed)
 ///
 /// # Data Preservation
@@ -231,14 +231,14 @@ impl Address {
     ///     TransparentAddress::new("t1example")
     /// ));
     ///
-    /// // Change the address type to shielded
+    /// // Swap the address out for a Sapling address
     /// if let ProtocolAddress::Transparent(_) = address.address() {
-    ///     *address.address_mut() = ProtocolAddress::Shielded(
+    ///     *address.address_mut() = ProtocolAddress::Sapling(
     ///         ShieldedAddress::new("zs1example".to_string())
     ///     );
     /// }
     ///
-    /// assert!(matches!(address.address(), ProtocolAddress::Shielded(_)));
+    /// assert!(matches!(address.address(), ProtocolAddress::Sapling(_)));
     /// ```
     pub fn address_mut(&mut self) -> &mut ProtocolAddress {
         &mut self.address
@@ -285,169 +285,6 @@ impl Address {
     /// ```
     pub fn set_address(&mut self, address: ProtocolAddress) {
         self.address = address;
-    }
-
-    /// Returns true if this is a shielded address.
-    ///
-    /// # Returns
-    /// `true` if the address is a shielded address (z-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
-    /// #
-    /// // Create a shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(address.is_shielded());
-    ///
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(!address.is_shielded());
-    /// ```
-    pub fn is_shielded(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Shielded(_))
-    }
-
-    /// Returns true if this is a transparent address.
-    ///
-    /// # Returns
-    /// `true` if the address is a transparent address (t-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, TransparentAddress};
-    /// #
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.is_transparent());
-    ///
-    /// // Create a shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(!address.is_transparent());
-    /// ```
-    pub fn is_transparent(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Transparent(_))
-    }
-
-    /// Returns true if this is a unified address.
-    ///
-    /// # Returns
-    /// `true` if the address is a unified address (u-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
-    /// #
-    /// // Create a unified address
-    /// let u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.is_unified());
-    ///
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(!address.is_unified());
-    /// ```
-    pub fn is_unified(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Unified(_))
-    }
-
-    /// Returns the shielded address component, if available.
-    ///
-    /// This method returns the shielded address in one of two cases:
-    /// 1. When this is directly a shielded address
-    /// 2. When this is a unified address with a sapling component
-    ///
-    /// # Returns
-    /// `Some(&ShieldedAddress)` if a shielded component is present, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, sapling::ShieldedAddress, UnifiedAddress};
-    /// #
-    /// // Direct shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(address.as_shielded().is_some());
-    ///
-    /// // A unified address with sapling component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let s_component = ShieldedAddress::new("zs1sapling".to_string());
-    /// u_addr.set_sapling_component(s_component);
-    ///
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_shielded().is_some());
-    /// ```
-    pub fn as_shielded(&self) -> Option<&ShieldedAddress> {
-        match &self.address {
-            ProtocolAddress::Shielded(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.sapling_component(),
-            _ => None,
-        }
-    }
-
-    /// Returns the transparent address component, if available.
-    ///
-    /// This method returns the transparent address in one of two cases:
-    /// 1. When this is directly a transparent address
-    /// 2. When this is a unified address with a transparent component
-    ///
-    /// # Returns
-    /// `Some(&TransparentAddress)` if a transparent component is present, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, UnifiedAddress};
-    /// #
-    /// // Direct transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.as_transparent().is_some());
-    ///
-    /// // A unified address with transparent component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let t_component = TransparentAddress::new("t1transparent");
-    /// u_addr.set_transparent_component(t_component);
-    ///
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_transparent().is_some());
-    /// ```
-    pub fn as_transparent(&self) -> Option<&TransparentAddress> {
-        match &self.address {
-            ProtocolAddress::Transparent(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.transparent_component(),
-            _ => None,
-        }
-    }
-
-    /// Returns the unified address, if this is a unified address.
-    ///
-    /// # Returns
-    /// `Some(&UnifiedAddress)` if this is a unified address, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
-    /// #
-    /// // Create a unified address
-    /// let u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_unified().is_some());
-    ///
-    /// // Create a non-unified address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.as_unified().is_none());
-    /// ```
-    pub fn as_unified(&self) -> Option<&UnifiedAddress> {
-        match &self.address {
-            ProtocolAddress::Unified(addr) => Some(addr),
-            _ => None,
-        }
     }
 }
 

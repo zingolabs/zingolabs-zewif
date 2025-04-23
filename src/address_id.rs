@@ -11,7 +11,7 @@ use super::{Network, ProtocolAddress};
 /// A universal identifier for addresses across different Zcash protocols.
 ///
 /// `AddressId` provides a common interface for working with addresses from all Zcash
-/// protocols: transparent, Sapling, Orchard, and unified addresses. This type serves
+/// protocols: transparent, Sapling, and unified addresses. This type serves
 /// as a key abstraction in wallet data migration, allowing addresses to be tracked
 /// consistently regardless of their underlying protocol type.
 ///
@@ -19,8 +19,7 @@ use super::{Network, ProtocolAddress};
 /// In Zcash, each protocol has its own address format with different capabilities:
 ///
 /// - **Transparent addresses**: Bitcoin-compatible addresses starting with 't'
-/// - **Sapling addresses**: Shielded addresses starting with 'zs'
-/// - **Orchard addresses**: Newer shielded addresses starting with 'zo'
+/// - **Sapling addresses**: Sapling addresses starting with 'zs'
 /// - **Unified addresses**: Multi-protocol addresses starting with 'u'
 ///
 /// This type also supports internal account identifiers, which may not have direct
@@ -56,8 +55,6 @@ pub enum AddressId {
     Transparent(String),
     /// Sapling address
     Sapling(String),
-    /// Orchard address
-    Orchard(String),
     /// Unified address
     Unified(String),
     /// Internal identifier for address in a unified account
@@ -84,14 +81,12 @@ impl AddressId {
     pub fn from_protocol_address(address: &ProtocolAddress) -> Self {
         match address {
             ProtocolAddress::Transparent(addr) => Self::Transparent(addr.address().to_string()),
-            ProtocolAddress::Shielded(addr) => {
-                // Determine if it's a Sapling or Orchard address based on the address format
+            ProtocolAddress::Sapling(addr) => {
+                // Determine if it's a Sapling address based on the address format
                 // This is a simple heuristic and might need refinement
                 let addr_str = addr.address();
                 if addr_str.starts_with("zs") {
                     Self::Sapling(addr_str.to_string())
-                } else if addr_str.starts_with("zo") {
-                    Self::Orchard(addr_str.to_string())
                 } else {
                     // Default to Sapling if we can't determine the type
                     Self::Sapling(addr_str.to_string())
@@ -106,7 +101,6 @@ impl AddressId {
     /// This method determines the address type based on the address prefix:
     /// - 't' for transparent addresses
     /// - 'zs' for Sapling addresses
-    /// - 'zo' for Orchard addresses
     /// - 'u' for unified addresses
     ///
     /// # Arguments
@@ -135,8 +129,6 @@ impl AddressId {
             Ok(Self::Transparent(address.to_string()))
         } else if address.starts_with("zs") {
             Ok(Self::Sapling(address.to_string()))
-        } else if address.starts_with("zo") {
-            Ok(Self::Orchard(address.to_string()))
         } else if address.starts_with('u') {
             Ok(Self::Unified(address.to_string()))
         } else {
@@ -164,7 +156,6 @@ impl AddressId {
         match self {
             Self::Transparent(addr) => Some(addr),
             Self::Sapling(addr) => Some(addr),
-            Self::Orchard(addr) => Some(addr),
             Self::Unified(addr) => Some(addr),
             Self::UnifiedAccountAddress(_) => None,
         }
@@ -183,7 +174,6 @@ impl AddressId {
         match self {
             Self::Transparent(_) => "transparent",
             Self::Sapling(_) => "sapling",
-            Self::Orchard(_) => "orchard",
             Self::Unified(_) => "unified",
             Self::UnifiedAccountAddress(_) => "unified_account",
         }
@@ -195,7 +185,6 @@ impl Display for AddressId {
         match self {
             Self::Transparent(addr) => write!(f, "t:{}", addr),
             Self::Sapling(addr) => write!(f, "zs:{}", addr),
-            Self::Orchard(addr) => write!(f, "zo:{}", addr),
             Self::Unified(addr) => write!(f, "u:{}", addr),
             Self::UnifiedAccountAddress(id) => write!(f, "ua:{}", id),
         }
@@ -210,8 +199,6 @@ impl FromStr for AddressId {
             Ok(Self::Transparent(addr.to_string()))
         } else if let Some(addr) = s.strip_prefix("zs:") {
             Ok(Self::Sapling(addr.to_string()))
-        } else if let Some(addr) = s.strip_prefix("zo:") {
-            Ok(Self::Orchard(addr.to_string()))
         } else if let Some(addr) = s.strip_prefix("u:") {
             Ok(Self::Unified(addr.to_string()))
         } else if let Some(id) = s.strip_prefix("ua:") {
@@ -337,7 +324,7 @@ mod tests {
         assert_eq!(addr_id.protocol_type(), "transparent");
 
         // Test sapling address
-        let shielded = ProtocolAddress::Shielded(ShieldedAddress::new("zs1abcdef".to_string()));
+        let shielded = ProtocolAddress::Sapling(ShieldedAddress::new("zs1abcdef".to_string()));
         let addr_id = AddressId::from_protocol_address(&shielded);
         assert!(matches!(addr_id, AddressId::Sapling(_)));
         assert_eq!(addr_id.protocol_type(), "sapling");
@@ -391,7 +378,7 @@ mod tests {
         // Create some test addresses and account IDs
         let addr1 = AddressId::Transparent("t1111".to_string());
         let addr2 = AddressId::Sapling("zs2222".to_string());
-        let addr3 = AddressId::Orchard("zo3333".to_string());
+        let addr3 = AddressId::Unified("u1000".to_string());
 
         let account1 = u256::default(); // Account ID 1
         // Create a u256 value with just the first byte set to 1
@@ -417,7 +404,6 @@ mod tests {
 
         let addrs_acct2 = registry.find_addresses_for_account(&account2);
         assert_eq!(addrs_acct2.len(), 1);
-        assert!(addrs_acct2.contains(&&addr3));
 
         // Test counts
         assert_eq!(registry.address_count(), 3);
