@@ -39,7 +39,7 @@ use bc_envelope::prelude::*;
 ///
 /// // Create a Sapling address
 /// let s_addr = sapling::Address::new("zs1example".to_string());
-/// let s_protocol = ProtocolAddress::Sapling(s_addr);
+/// let s_protocol = ProtocolAddress::Sapling(Box::new(s_addr));
 /// assert!(s_protocol.is_sapling());
 ///
 /// // Create a unified address
@@ -58,7 +58,7 @@ pub enum ProtocolAddress {
     Transparent(transparent::Address),
 
     /// A shielded address (Z-address). This can include Sapling, Sprout
-    Sapling(sapling::Address),
+    Sapling(Box<sapling::Address>),
 
     /// A unified address (U-address) that contains multiple receiver types.
     /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
@@ -86,7 +86,7 @@ impl ProtocolAddress {
     ///
     /// // Shielded address
     /// let s_addr = sapling::Address::new("zs1example".to_string());
-    /// let protocol = ProtocolAddress::Sapling(s_addr);
+    /// let protocol = ProtocolAddress::Sapling(Box::new(s_addr));
     /// assert_eq!(protocol.as_string(), "zs1example");
     /// ```
     pub fn as_string(&self) -> String {
@@ -108,7 +108,7 @@ impl ProtocolAddress {
     /// #
     /// // Create a Sapling address
     /// let s_addr = sapling::Address::new("zs1example".to_string());
-    /// let address = ProtocolAddress::Sapling(s_addr);
+    /// let address = ProtocolAddress::Sapling(Box::new(s_addr));
     /// assert!(address.is_sapling());
     ///
     /// // Create a transparent address
@@ -136,7 +136,7 @@ impl ProtocolAddress {
     ///
     /// // Create a shielded address
     /// let s_addr = sapling::Address::new("zs1example".to_string());
-    /// let address = ProtocolAddress::Sapling(s_addr);
+    /// let address = ProtocolAddress::Sapling(Box::new(s_addr));
     /// assert!(!address.is_transparent());
     /// ```
     pub fn is_transparent(&self) -> bool {
@@ -171,7 +171,7 @@ impl From<ProtocolAddress> for Envelope {
     fn from(value: ProtocolAddress) -> Self {
         match value {
             ProtocolAddress::Transparent(addr) => addr.into(),
-            ProtocolAddress::Sapling(addr) => addr.into(),
+            ProtocolAddress::Sapling(addr) => (*addr).into(),
             ProtocolAddress::Unified(addr) => (*addr).into(),
         }
     }
@@ -184,7 +184,7 @@ impl TryFrom<Envelope> for ProtocolAddress {
         if envelope.has_type_envelope("TransparentAddress") {
             Ok(ProtocolAddress::Transparent(envelope.try_into()?))
         } else if envelope.has_type_envelope("SaplingAddress") {
-            Ok(ProtocolAddress::Sapling(envelope.try_into()?))
+            Ok(ProtocolAddress::Sapling(Box::new(envelope.try_into()?)))
         } else if envelope.has_type_envelope("UnifiedAddress") {
             Ok(ProtocolAddress::Unified(Box::new(envelope.try_into()?)))
         } else {
@@ -200,7 +200,7 @@ impl crate::RandomInstance for ProtocolAddress {
         let choice = rand::Rng::gen_range(&mut rng, 0..3);
         match choice {
             0 => ProtocolAddress::Transparent(transparent::Address::random()),
-            1 => ProtocolAddress::Sapling(sapling::Address::random()),
+            1 => ProtocolAddress::Sapling(Box::new(sapling::Address::random())),
             _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
         }
     }

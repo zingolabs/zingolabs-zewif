@@ -236,7 +236,7 @@ impl Address {
     /// // Swap the address out for a Sapling address
     /// if let ProtocolAddress::Transparent(_) = address.address() {
     ///     *address.address_mut() = ProtocolAddress::Sapling(
-    ///         sapling::Address::new("zs1example".to_string())
+    ///         Box::new(sapling::Address::new("zs1example".to_string()))
     ///     );
     /// }
     ///
