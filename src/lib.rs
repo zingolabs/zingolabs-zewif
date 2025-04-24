@@ -97,7 +97,6 @@ pub mod transparent;
 
 // Modules that can use unqualified paths
 mod_use!(account);
-mod_use!(address_id);
 mod_use!(address);
 mod_use!(amount);
 mod_use!(anchor);
