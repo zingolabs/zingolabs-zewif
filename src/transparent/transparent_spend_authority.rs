@@ -1,5 +1,4 @@
-use super::SpendingKey;
-use crate::test_envelope_roundtrip;
+use super::TransparentSpendingKey;
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
@@ -29,10 +28,9 @@ use bc_envelope::prelude::*;
 ///
 /// # Examples
 /// ```
-/// # use zewif::{TransparentSpendAuthority, SpendingKey, Blob};
+/// # use zewif::{Blob, transparent::{TransparentSpendAuthority, TransparentSpendingKey}};
 /// // Direct spending key
-/// let raw_key_data = Blob::<32>::default();
-/// let spending_key = SpendingKey::new_raw(raw_key_data);
+/// let spending_key = TransparentSpendingKey::new([0; 32]);
 /// let spend_authority = TransparentSpendAuthority::SpendingKey(spending_key);
 ///
 /// // Derived key (from HD wallet seed)
@@ -41,7 +39,7 @@ use bc_envelope::prelude::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum TransparentSpendAuthority {
     /// Direct spending key stored in the wallet
-    SpendingKey(SpendingKey),
+    SpendingKey(TransparentSpendingKey),
 
     /// Spending key derived from another source (e.g., HD wallet seed)
     /// The actual derivation information is typically stored with the address
@@ -62,8 +60,10 @@ impl TryFrom<Envelope> for TransparentSpendAuthority {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("TransparentSpendAuthority").context("TransparentSpendAuthority")?;
-        if let Ok(spending_key) = SpendingKey::try_from(envelope.clone()) {
+        envelope
+            .check_type_envelope("TransparentSpendAuthority")
+            .context("TransparentSpendAuthority")?;
+        if let Ok(spending_key) = TransparentSpendingKey::try_from(envelope.clone()) {
             Ok(TransparentSpendAuthority::SpendingKey(spending_key))
         } else if envelope.extract_subject::<String>()? == "Derived" {
             Ok(TransparentSpendAuthority::Derived)
@@ -79,11 +79,18 @@ impl crate::RandomInstance for TransparentSpendAuthority {
         let mut rng = rand::thread_rng();
         let a = rand::Rng::gen_range(&mut rng, 0..=1);
         if a == 0 {
-            TransparentSpendAuthority::SpendingKey(SpendingKey::random())
+            TransparentSpendAuthority::SpendingKey(TransparentSpendingKey::random())
         } else {
             TransparentSpendAuthority::Derived
         }
     }
 }
 
-test_envelope_roundtrip!(TransparentSpendAuthority);
+#[cfg(test)]
+mod tests {
+    use crate::test_envelope_roundtrip;
+
+    use super::TransparentSpendAuthority;
+
+    test_envelope_roundtrip!(TransparentSpendAuthority);
+}

@@ -35,8 +35,45 @@
 //! let as_blob: Blob<32> = ivk.into();
 //! ```
 
-use crate::{blob, blob_envelope, test_envelope_roundtrip};
+use bc_envelope::prelude::CBOR;
 
-blob!(SaplingIncomingViewingKey, 32, "A Sapling Incoming Viewing Key (IVK) for detecting incoming transactions.");
+use crate::{Blob, blob, blob_envelope, test_envelope_roundtrip};
 
-blob_envelope!(SaplingIncomingViewingKey);
+blob!(
+    IncomingViewingKey,
+    32,
+    "A Sapling Incoming Viewing Key (IVK) for detecting incoming transactions."
+);
+
+blob_envelope!(IncomingViewingKey);
+
+impl From<IncomingViewingKey> for CBOR {
+    fn from(value: IncomingViewingKey) -> Self {
+        CBOR::to_byte_string(value.0)
+    }
+}
+
+impl From<&IncomingViewingKey> for CBOR {
+    fn from(value: &IncomingViewingKey) -> Self {
+        CBOR::to_byte_string(value.0.clone())
+    }
+}
+
+impl TryFrom<CBOR> for IncomingViewingKey {
+    type Error = anyhow::Error;
+
+    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+        let bytes = cbor.try_into_byte_string()?;
+        Blob::<32>::from_slice(&bytes[..]).map(IncomingViewingKey)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+
+    use super::IncomingViewingKey;
+
+    test_cbor_roundtrip!(IncomingViewingKey);
+    test_envelope_roundtrip!(IncomingViewingKey);
+}

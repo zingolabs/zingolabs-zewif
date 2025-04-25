@@ -2,7 +2,7 @@ use crate::{DebugOption, Indexed, test_envelope_roundtrip};
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use super::{ProtocolAddress, ShieldedAddress, TransparentAddress, UnifiedAddress};
+use super::ProtocolAddress;
 
 /// A high-level address representation with metadata in a Zcash wallet.
 ///
@@ -19,7 +19,7 @@ use super::{ProtocolAddress, ShieldedAddress, TransparentAddress, UnifiedAddress
 /// address protocols:
 ///
 /// - **Transparent addresses**: Bitcoin-compatible addresses (t-prefixed)
-/// - **Shielded addresses**: Privacy-focused Sapling/Orchard addresses (z-prefixed)
+/// - **Sapling addresses**: Shielded Sapling protocol addresses (z-prefixed)
 /// - **Unified addresses**: Multi-protocol addresses (u-prefixed)
 ///
 /// # Data Preservation
@@ -32,10 +32,10 @@ use super::{ProtocolAddress, ShieldedAddress, TransparentAddress, UnifiedAddress
 ///
 /// # Examples
 /// ```
-/// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+/// # use zewif::{Address, ProtocolAddress, transparent};
 /// #
 /// // Create a transparent address
-/// let t_addr = TransparentAddress::new("t1exampleaddress");
+/// let t_addr = transparent::Address::new("t1exampleaddress");
 /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
 ///
 /// // Wrap it in an Address with metadata
@@ -50,6 +50,8 @@ use super::{ProtocolAddress, ShieldedAddress, TransparentAddress, UnifiedAddress
 #[derive(Clone, PartialEq)]
 pub struct Address {
     /// The index of this address in the wallet
+    /// TODO: I'm not sure that this is useful; if it's intended to be used as a primary key then
+    /// it should be of some non-conflicting type such as a UUID.
     index: usize,
 
     /// The underlying protocol-specific address
@@ -99,9 +101,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let address = Address::new(protocol_addr);
     /// ```
@@ -122,9 +124,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let mut address = Address::new(protocol_addr);
     ///
@@ -142,10 +144,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// // Initially there is no purpose
@@ -166,10 +168,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// address.set_purpose("Donations".to_string());
@@ -185,10 +187,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1exampleaddress")
+    ///     transparent::Address::new("t1exampleaddress")
     /// ));
     ///
     /// let addr_string = address.as_string();
@@ -205,9 +207,9 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
-    /// let t_addr = TransparentAddress::new("t1example");
+    /// let t_addr = transparent::Address::new("t1example");
     /// let protocol_addr = ProtocolAddress::Transparent(t_addr);
     /// let address = Address::new(protocol_addr);
     ///
@@ -225,20 +227,20 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, ShieldedAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent, sapling};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
-    /// // Change the address type to shielded
+    /// // Swap the address out for a Sapling address
     /// if let ProtocolAddress::Transparent(_) = address.address() {
-    ///     *address.address_mut() = ProtocolAddress::Shielded(
-    ///         ShieldedAddress::new("zs1example".to_string())
+    ///     *address.address_mut() = ProtocolAddress::Sapling(
+    ///         Box::new(sapling::Address::new("zs1example".to_string()))
     ///     );
     /// }
     ///
-    /// assert!(matches!(address.address(), ProtocolAddress::Shielded(_)));
+    /// assert!(matches!(address.address(), ProtocolAddress::Sapling(_)));
     /// ```
     pub fn address_mut(&mut self) -> &mut ProtocolAddress {
         &mut self.address
@@ -251,10 +253,10 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1example")
+    ///     transparent::Address::new("t1example")
     /// ));
     ///
     /// address.set_name("Cold Storage".to_string());
@@ -271,183 +273,20 @@ impl Address {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress};
+    /// # use zewif::{Address, ProtocolAddress, transparent};
     /// #
     /// let mut address = Address::new(ProtocolAddress::Transparent(
-    ///     TransparentAddress::new("t1old")
+    ///     transparent::Address::new("t1old")
     /// ));
     ///
     /// // Replace with a new address
-    /// let new_addr = TransparentAddress::new("t1new");
+    /// let new_addr = transparent::Address::new("t1new");
     /// address.set_address(ProtocolAddress::Transparent(new_addr));
     ///
     /// assert_eq!(address.as_string(), "t1new");
     /// ```
     pub fn set_address(&mut self, address: ProtocolAddress) {
         self.address = address;
-    }
-
-    /// Returns true if this is a shielded address.
-    ///
-    /// # Returns
-    /// `true` if the address is a shielded address (z-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, TransparentAddress};
-    /// #
-    /// // Create a shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(address.is_shielded());
-    ///
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(!address.is_shielded());
-    /// ```
-    pub fn is_shielded(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Shielded(_))
-    }
-
-    /// Returns true if this is a transparent address.
-    ///
-    /// # Returns
-    /// `true` if the address is a transparent address (t-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, TransparentAddress};
-    /// #
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.is_transparent());
-    ///
-    /// // Create a shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(!address.is_transparent());
-    /// ```
-    pub fn is_transparent(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Transparent(_))
-    }
-
-    /// Returns true if this is a unified address.
-    ///
-    /// # Returns
-    /// `true` if the address is a unified address (u-address), `false` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
-    /// #
-    /// // Create a unified address
-    /// let u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.is_unified());
-    ///
-    /// // Create a transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(!address.is_unified());
-    /// ```
-    pub fn is_unified(&self) -> bool {
-        matches!(self.address, ProtocolAddress::Unified(_))
-    }
-
-    /// Returns the shielded address component, if available.
-    ///
-    /// This method returns the shielded address in one of two cases:
-    /// 1. When this is directly a shielded address
-    /// 2. When this is a unified address with a sapling component
-    ///
-    /// # Returns
-    /// `Some(&ShieldedAddress)` if a shielded component is present, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, ShieldedAddress, UnifiedAddress};
-    /// #
-    /// // Direct shielded address
-    /// let s_addr = ShieldedAddress::new("zs1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Shielded(s_addr));
-    /// assert!(address.as_shielded().is_some());
-    ///
-    /// // A unified address with sapling component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let s_component = ShieldedAddress::new("zs1sapling".to_string());
-    /// u_addr.set_sapling_component(s_component);
-    ///
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_shielded().is_some());
-    /// ```
-    pub fn as_shielded(&self) -> Option<&ShieldedAddress> {
-        match &self.address {
-            ProtocolAddress::Shielded(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.sapling_component(),
-            _ => None,
-        }
-    }
-
-    /// Returns the transparent address component, if available.
-    ///
-    /// This method returns the transparent address in one of two cases:
-    /// 1. When this is directly a transparent address
-    /// 2. When this is a unified address with a transparent component
-    ///
-    /// # Returns
-    /// `Some(&TransparentAddress)` if a transparent component is present, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, TransparentAddress, UnifiedAddress};
-    /// #
-    /// // Direct transparent address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.as_transparent().is_some());
-    ///
-    /// // A unified address with transparent component
-    /// let mut u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let t_component = TransparentAddress::new("t1transparent");
-    /// u_addr.set_transparent_component(t_component);
-    ///
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_transparent().is_some());
-    /// ```
-    pub fn as_transparent(&self) -> Option<&TransparentAddress> {
-        match &self.address {
-            ProtocolAddress::Transparent(addr) => Some(addr),
-            ProtocolAddress::Unified(addr) => addr.transparent_component(),
-            _ => None,
-        }
-    }
-
-    /// Returns the unified address, if this is a unified address.
-    ///
-    /// # Returns
-    /// `Some(&UnifiedAddress)` if this is a unified address, `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::{Address, ProtocolAddress, UnifiedAddress, TransparentAddress};
-    /// #
-    /// // Create a unified address
-    /// let u_addr = UnifiedAddress::new("u1example".to_string());
-    /// let address = Address::new(ProtocolAddress::Unified(Box::new(u_addr)));
-    /// assert!(address.as_unified().is_some());
-    ///
-    /// // Create a non-unified address
-    /// let t_addr = TransparentAddress::new("t1example");
-    /// let address = Address::new(ProtocolAddress::Transparent(t_addr));
-    /// assert!(address.as_unified().is_none());
-    /// ```
-    pub fn as_unified(&self) -> Option<&UnifiedAddress> {
-        match &self.address {
-            ProtocolAddress::Unified(addr) => Some(addr),
-            _ => None,
-        }
     }
 }
 
@@ -468,11 +307,21 @@ impl TryFrom<Envelope> for Address {
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
         envelope.check_type_envelope("Address").context("Address")?;
         let index = envelope.extract_subject().context("index")?;
-        let address = envelope.try_object_for_predicate("address").context("address")?;
+        let address = envelope
+            .try_object_for_predicate("address")
+            .context("address")?;
         let name = envelope.try_object_for_predicate("name").context("name")?;
-        let purpose = envelope.try_optional_object_for_predicate("purpose").context("purpose")?;
+        let purpose = envelope
+            .try_optional_object_for_predicate("purpose")
+            .context("purpose")?;
         let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
-        Ok(Address { index, address, name, purpose, attachments })
+        Ok(Address {
+            index,
+            address,
+            name,
+            purpose,
+            attachments,
+        })
     }
 }
 
