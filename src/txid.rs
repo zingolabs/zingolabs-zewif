@@ -1,5 +1,5 @@
 use super::parser::prelude::*;
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::{HexParseError, test_cbor_roundtrip, test_envelope_roundtrip};
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 use std::{
@@ -106,6 +106,30 @@ impl TxId {
     /// ```
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         TxId(bytes)
+    }
+
+    /// Parses a `TxId` from a canonically-encoded (byte-reversed) hexadecimal string.
+    ///
+    /// # Examples
+    /// ```
+    /// # use zewif::TxId;
+    ///
+    /// let hex = "0000000000000000000000000000000000000000000000000000000000000001";
+    /// let blob = TxId::from_hex(hex).unwrap();
+    /// let mut expected = [0u8; 32];
+    /// expected[0] = 1;
+    /// assert_eq!(blob.as_ref(), &expected);
+    /// ```
+    pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
+        let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
+        data.reverse();
+
+        Ok(Self(<[u8; 32]>::try_from(&data[..]).map_err(|_| {
+            crate::HexParseError::SliceInvalid {
+                expected: 64,
+                actual: hex.len(),
+            }
+        })?))
     }
 
     /// Reads a `TxId` from any source implementing the `Read` trait.
