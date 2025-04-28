@@ -1,4 +1,4 @@
-use crate::{blob, blob_envelope, test_envelope_roundtrip};
+use crate::{blob, blob_envelope};
 
 /// Size of a complete Groth16 proof in bytes (192)
 pub const GROTH_PROOF_SIZE: usize = 48 + 96 + 48;
