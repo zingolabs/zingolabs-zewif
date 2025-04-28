@@ -1961,6 +1961,7 @@ dependencies = [
  "bc-envelope",
  "bc-rand",
  "chrono",
+ "dcbor",
  "hex",
  "rand",
  "sha2",
