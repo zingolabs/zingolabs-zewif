@@ -1,10 +1,10 @@
-use super::{BlockHeight, Data, SecondsSinceEpoch, TxId, u256};
+use super::{BlockHeight, Data, SecondsSinceEpoch, TxId};
 use super::{
     JoinSplitDescription, OrchardActionDescription, TxIn, TxOut,
     sapling::{SaplingOutputDescription, SaplingSpendDescription},
 };
 use crate::{
-    Indexed, TransactionStatus, envelope_optional_indexed_objects_for_predicate,
+    Indexed, TransactionStatus, TxBlockPosition, envelope_optional_indexed_objects_for_predicate,
     test_envelope_roundtrip,
 };
 use anyhow::{Context, Result};
@@ -68,17 +68,22 @@ pub struct Transaction {
     txid: TxId,
     /// The raw transaction data, if known.
     raw: Option<Data>,
+    /// The height for which the transaction was constructed, which implies
+    /// the consensus branch for which the transaction was intended, if known.
+    target_height: Option<BlockHeight>,
     /// The height at which the transaction was mined, if known.
     /// It is possible that if a rollback occurred just after the zeWIF
     /// export, the transaction could have been unmined, and possibly
     /// remined at a different height.
     mined_height: Option<BlockHeight>,
+    // Additional metadata such as confirmations or timestamp may be added here.
+    /// The hash of the block containing the transaction and the index of the transaction within
+    /// the block, if known.
+    block_position: Option<TxBlockPosition>,
     /// The timestamp of the transaction, if known.
     timestamp: Option<SecondsSinceEpoch>,
     /// The status of the transaction.
     status: Option<TransactionStatus>,
-    /// The hash of the block containing the transaction, if known.
-    block_hash: Option<u256>,
 
     // Design issue: do we want to parse out all of this? All wallets will
     // necessarily have code to parse a transaction. The only information that
@@ -105,7 +110,7 @@ pub struct Transaction {
     orchard_actions: Option<Vec<OrchardActionDescription>>,
     /// Optional data for Sprout JoinSplit descriptions
     sprout_joinsplits: Option<Vec<JoinSplitDescription>>,
-    // Additional metadata such as confirmations or timestamp may be added here.
+    /// Additional arbitrary metadata related to the transaction.
     attachments: Attachments,
 }
 
@@ -116,16 +121,17 @@ impl Transaction {
         Self {
             txid,
             raw: None,
+            target_height: None,
             mined_height: None,
             timestamp: None,
             status: None,
-            block_hash: None,
             inputs: None,
             outputs: None,
             sapling_spends: None,
             sapling_outputs: None,
             orchard_actions: None,
             sprout_joinsplits: None,
+            block_position: None,
             attachments: Attachments::new(),
         }
     }
@@ -170,12 +176,12 @@ impl Transaction {
         self.status = Some(status);
     }
 
-    pub fn block_hash(&self) -> Option<&u256> {
-        self.block_hash.as_ref()
+    pub fn block_position(&self) -> Option<&TxBlockPosition> {
+        self.block_position.as_ref()
     }
 
-    pub fn set_block_hash(&mut self, hash: u256) {
-        self.block_hash = Some(hash);
+    pub fn set_block_position(&mut self, block_position: Option<TxBlockPosition>) {
+        self.block_position = block_position;
     }
 
     pub fn inputs(&self) -> Option<&Vec<TxIn>> {
@@ -296,10 +302,11 @@ impl From<Transaction> for Envelope {
         let mut e = Envelope::new(value.txid)
             .add_type("Transaction")
             .add_optional_assertion("raw", value.raw)
+            .add_optional_assertion("target_height", value.target_height)
             .add_optional_assertion("mined_height", value.mined_height)
             .add_optional_assertion("timestamp", value.timestamp)
             .add_optional_assertion("status", value.status)
-            .add_optional_assertion("block_hash", value.block_hash);
+            .add_optional_assertion("block_position", value.block_position);
 
         e = value.inputs.into_iter().flatten()
             .fold(e, |e, input| e.add_assertion("input", input));
@@ -331,10 +338,11 @@ impl TryFrom<Envelope> for Transaction {
         envelope.check_type_envelope("Transaction")?;
         let txid = envelope.extract_subject().context("txid")?;
         let raw = envelope.try_optional_object_for_predicate("raw").context("raw")?;
+        let target_height = envelope.try_optional_object_for_predicate("target_height").context("target_height")?;
         let mined_height = envelope.try_optional_object_for_predicate("mined_height").context("mined_height")?;
         let timestamp = envelope.try_optional_object_for_predicate("timestamp").context("timestamp")?;
         let status = envelope.try_optional_object_for_predicate("status").context("status")?;
-        let block_hash = envelope.try_optional_object_for_predicate("block_hash").context("block_hash")?;
+        let block_position = envelope.try_optional_object_for_predicate("block_position").context("block_position")?;
 
         let inputs = envelope_optional_indexed_objects_for_predicate(&envelope, "input").context("inputs")?;
         let outputs = envelope_optional_indexed_objects_for_predicate(&envelope, "output").context("outputs")?;
@@ -347,10 +355,11 @@ impl TryFrom<Envelope> for Transaction {
         Ok(Self {
             txid,
             raw,
+            target_height,
             mined_height,
             timestamp,
             status,
-            block_hash,
+            block_position,
             inputs,
             outputs,
             sapling_spends,
@@ -370,10 +379,11 @@ impl crate::RandomInstance for Transaction {
         Self {
             txid: TxId::random(),
             raw: Data::opt_random(),
+            target_height: BlockHeight::opt_random(),
             mined_height: BlockHeight::opt_random(),
             timestamp: SecondsSinceEpoch::opt_random(),
             status: TransactionStatus::opt_random(),
-            block_hash: u256::opt_random(),
+            block_position: TxBlockPosition::opt_random(),
             inputs: Vec::<TxIn>::opt_random().set_indexes(),
             outputs: Vec::<TxOut>::opt_random().set_indexes(),
             sapling_spends: Vec::<SaplingSpendDescription>::opt_random().set_indexes(),

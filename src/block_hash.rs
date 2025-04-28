@@ -113,9 +113,10 @@ impl BlockHash {
     /// ```
     /// # use zewif::BlockHash;
     ///
-    /// let hex = "0001020304050607080910111213141516171819202122232425262728293031";
-    /// let blob = BlockHash::from_hex(hex).unwrap();
-    /// assert_eq!(blob.as_slice(), &[31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]);
+    /// let hex = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+    /// let block_hash = BlockHash::from_hex(hex).unwrap();
+    /// assert_eq!(block_hash.as_ref()[0], 0x6f);
+    /// assert_eq!(format!("{}", block_hash), hex);
     /// ```
     pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
         let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
