@@ -20,13 +20,6 @@ macro_rules! blob_envelope {
         }
 
         #[cfg(test)]
-        impl $crate::RandomInstance for $name {
-            fn random() -> Self {
-                Self($crate::Blob::random())
-            }
-        }
-
-        #[cfg(test)]
         mod test_envelope {
             use $crate::test_envelope_roundtrip;
 

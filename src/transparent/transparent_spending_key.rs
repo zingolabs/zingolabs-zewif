@@ -12,5 +12,6 @@ blob!(
     32,
     "A Zcash transparent private key"
 );
+impl Copy for TransparentSpendingKey {}
 
 blob_envelope!(TransparentSpendingKey);

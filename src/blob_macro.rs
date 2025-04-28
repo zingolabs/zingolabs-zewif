@@ -24,29 +24,31 @@
 #[macro_export]
 macro_rules! blob {
     ($name:ident, $size:expr, $doc:expr) => {
+        use anyhow::Context as _;
+
         #[doc = $doc]
-        pub struct $name($crate::Blob<$size>);
+        pub struct $name([u8; $size]);
 
         impl $name {
             /// Creates a new instance from a fixed-size byte array.
             ///
             /// This is the primary constructor when you have an exact-sized array available.
             pub fn new(data: [u8; $size]) -> Self {
-                Self($crate::Blob::new(data))
+                Self(data)
             }
 
             /// Returns the length of this blob in bytes.
             ///
             /// This will always return `$size` for this type.
             pub fn len(&self) -> usize {
-                self.0.len()
+                $size
             }
 
             /// Returns `true` if this blob contains no bytes.
             ///
             /// This will always return `false` for this type (unless `$size` is 0).
             pub fn is_empty(&self) -> bool {
-                self.0.is_empty()
+                $size != 0
             }
 
             /// Converts this blob to a `Vec<u8>`, creating a copy of the data.
@@ -58,25 +60,42 @@ macro_rules! blob {
             ///
             /// # Errors
             /// Returns an error if the slice's length doesn't match the expected size ($size).
-            pub fn from_slice(data: &[u8]) -> ::anyhow::Result<Self> {
-                Ok(Self($crate::Blob::from_slice(data)?))
+            pub fn from_slice(data: &[u8]) -> Result<Self, std::array::TryFromSliceError> {
+                Ok(Self(<[u8; $size]>::try_from(data)?))
             }
 
             /// Creates an instance from a `Vec<u8>`.
             ///
             /// # Errors
             /// Returns an error if the vector's length doesn't match the expected size ($size).
-            pub fn from_vec(data: Vec<u8>) -> ::anyhow::Result<Self> {
-                Ok(Self($crate::Blob::from_vec(data)?))
+            pub fn from_vec(data: Vec<u8>) -> Result<Self, std::array::TryFromSliceError> {
+                Ok(Self(<[u8; $size]>::try_from(&data[..])?))
             }
 
-            /// Creates an instance from a hexadecimal string.
-            ///
-            /// # Panics
-            /// Panics if the hex string cannot be decoded or if the decoded bytes
-            /// don't match the expected length ($size).
+            /// Parses an instance from a hex string.
             pub fn from_hex(hex: &str) -> Result<Self, $crate::HexParseError> {
-                Ok(Self($crate::Blob::from_hex(hex)?))
+                let data = hex::decode(hex).map_err(|e| $crate::HexParseError::HexInvalid(e))?;
+                Self::from_vec(data).map_err(|_| $crate::HexParseError::SliceInvalid {
+                    expected: $size * 2,
+                    actual: hex.len(),
+                })
+            }
+
+            /// Parses an instance from a hex string in reversed byte order, such as is used for
+            /// transaction identifiers and block hashes.
+            pub fn from_reversed_hex(hex: &str) -> Result<Self, $crate::HexParseError> {
+                let mut data =
+                    hex::decode(hex).map_err(|e| $crate::HexParseError::HexInvalid(e))?;
+                data.reverse();
+                Self::from_vec(data).map_err(|_| $crate::HexParseError::SliceInvalid {
+                    expected: $size * 2,
+                    actual: hex.len(),
+                })
+            }
+
+            /// Formats the bytes of this object as a hex string.
+            pub fn to_hex(&self) -> String {
+                hex::encode(self.0)
             }
         }
 
@@ -102,25 +121,13 @@ macro_rules! blob {
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                write!(f, "{}({:?})", stringify!($name), self.0)
-            }
-        }
-
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                write!(f, "{}({:?})", stringify!($name), self.0)
-            }
-        }
-
-        impl Default for $name {
-            fn default() -> Self {
-                Self($crate::Blob::default())
+                write!(f, "{}({})", stringify!($name), hex::encode(self.0))
             }
         }
 
         impl AsRef<[u8]> for $name {
             fn as_ref(&self) -> &[u8] {
-                self.0.as_ref()
+                &self.0[..]
             }
         }
 
@@ -148,12 +155,6 @@ macro_rules! blob {
             }
         }
 
-        impl From<$name> for $crate::Blob<$size> {
-            fn from(obj: $name) -> $crate::Blob<$size> {
-                obj.0
-            }
-        }
-
         impl $crate::parser::Parse for $name {
             /// Parses this type from a binary data stream.
             ///
@@ -162,10 +163,45 @@ macro_rules! blob {
             where
                 Self: Sized,
             {
-                let bytes = ::anyhow::Context::with_context(parser.next($size), || {
-                    format!("Parsing {}", stringify!($name))
-                })?;
-                Ok(Self($crate::Blob::from(bytes)))
+                let data = parser
+                    .next($size)
+                    .with_context(|| format!("Parsing {}", stringify!($name)))?;
+                Ok(Self::from_slice(data)?)
+            }
+        }
+
+        impl From<$name> for bc_envelope::prelude::CBOR {
+            fn from(data: $name) -> Self {
+                bc_envelope::prelude::CBOR::to_byte_string(data.0)
+            }
+        }
+
+        impl From<&$name> for bc_envelope::prelude::CBOR {
+            fn from(data: &$name) -> Self {
+                bc_envelope::prelude::CBOR::to_byte_string(data.0)
+            }
+        }
+
+        impl TryFrom<bc_envelope::prelude::CBOR> for $name {
+            type Error = dcbor::Error;
+
+            fn try_from(cbor: bc_envelope::prelude::CBOR) -> Result<Self, Self::Error> {
+                let bytes = cbor.try_into_byte_string()?;
+                Self::from_slice(&bytes).map_err(|_| {
+                    dcbor::Error::Custom(format!(
+                        "slice length invalid; expected {} bytes, got {}",
+                        $size,
+                        bytes.len()
+                    ))
+                })
+            }
+        }
+
+        #[cfg(test)]
+        impl $crate::RandomInstance for $name {
+            fn random() -> Self {
+                let mut rng = bc_rand::thread_rng();
+                Self(bc_rand::rng_random_array(&mut rng))
             }
         }
     };
