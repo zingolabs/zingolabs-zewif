@@ -34,7 +34,6 @@
 use crate::mod_use;
 
 mod_use!(address);
-mod_use!(sapling_anchor_witness);
 mod_use!(sapling_extended_spending_key);
 mod_use!(sapling_extended_full_viewing_key);
 mod_use!(sapling_incoming_viewing_key);
