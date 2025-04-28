@@ -16,8 +16,6 @@
 //!
 //! ## Transaction Components
 //!
-//! - [`SaplingOutputDescription`]: Description of received outputs in Sapling shielded transactions
-//! - [`SaplingSpendDescription`]: Description of spent notes in Sapling shielded transactions
 //! - [`SaplingWitness`]: Cryptographic witness proving a note commitment exists in the tree
 //! - [`SaplingSentOutput`]: Sender's record of note data for outgoing transactions
 //!
@@ -40,7 +38,5 @@ mod_use!(sapling_anchor_witness);
 mod_use!(sapling_extended_spending_key);
 mod_use!(sapling_extended_full_viewing_key);
 mod_use!(sapling_incoming_viewing_key);
-mod_use!(sapling_output_description);
 mod_use!(sapling_sent_output);
-mod_use!(sapling_spend_description);
 mod_use!(sapling_witness);
