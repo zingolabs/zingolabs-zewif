@@ -1,6 +1,4 @@
-use bc_envelope::prelude::CBOR;
-
-use crate::{Blob, blob, blob_envelope, test_envelope_roundtrip};
+use crate::{blob, blob_envelope};
 
 // A hierarchical deterministic (HD) Sapling spending key with derivation information.
 //
@@ -18,34 +16,3 @@ blob!(
 );
 
 blob_envelope!(SaplingExtendedFullViewingKey);
-
-impl From<SaplingExtendedFullViewingKey> for CBOR {
-    fn from(value: SaplingExtendedFullViewingKey) -> Self {
-        CBOR::to_byte_string(value.0)
-    }
-}
-
-impl From<&SaplingExtendedFullViewingKey> for CBOR {
-    fn from(value: &SaplingExtendedFullViewingKey) -> Self {
-        CBOR::to_byte_string(value.0.clone())
-    }
-}
-
-impl TryFrom<CBOR> for SaplingExtendedFullViewingKey {
-    type Error = anyhow::Error;
-
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
-        let bytes = cbor.try_into_byte_string()?;
-        Blob::<73>::from_slice(&bytes[..]).map(SaplingExtendedFullViewingKey)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
-
-    use super::SaplingExtendedFullViewingKey;
-
-    test_cbor_roundtrip!(SaplingExtendedFullViewingKey);
-    test_envelope_roundtrip!(SaplingExtendedFullViewingKey);
-}

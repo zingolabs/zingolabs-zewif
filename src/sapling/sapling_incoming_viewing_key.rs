@@ -35,8 +35,12 @@
 //! let as_blob: Blob<32> = ivk.into();
 //! ```
 
-use crate::{blob, blob_envelope, test_envelope_roundtrip};
+use crate::{blob, blob_envelope};
 
-blob!(SaplingIncomingViewingKey, 32, "A Sapling Incoming Viewing Key (IVK) for detecting incoming transactions.");
+blob!(
+    SaplingIncomingViewingKey,
+    32,
+    "A Sapling Incoming Viewing Key (IVK) for detecting incoming transactions."
+);
 
 blob_envelope!(SaplingIncomingViewingKey);

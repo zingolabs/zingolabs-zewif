@@ -1,5 +1,5 @@
 use super::{Blob32, parser::prelude::*};
-use crate::{parse, test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::{HexParseError, parse, test_cbor_roundtrip, test_envelope_roundtrip};
 use anyhow::{Error, Result, bail};
 use bc_envelope::prelude::*;
 
@@ -29,7 +29,7 @@ pub const U256_SIZE: usize = 32;
 /// ```
 /// # use zewif::u256;
 /// // Create a u256 from a hexadecimal string (common for block hashes)
-/// let block_hash = u256::from_hex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+/// let block_hash = u256::from_hex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f").unwrap();
 ///
 /// // Display values are shown in reversed byte order (as is conventional in Bitcoin/Zcash)
 /// assert_eq!(
@@ -54,12 +54,9 @@ impl u256 {
     /// // Bitcoin genesis block hash (note: not reversed in the input)
     /// let genesis_hash = u256::from_hex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
     /// ```
-    ///
-    /// # Panics
-    /// Panics if the provided hex string cannot be parsed or is not exactly 64 characters (32 bytes).
-    pub fn from_hex(hex: &str) -> Self {
-        let blob = Blob32::from_hex(hex);
-        Self(blob.into())
+    pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
+        let blob = Blob32::from_hex(hex)?;
+        Ok(Self(blob.into()))
     }
 }
 

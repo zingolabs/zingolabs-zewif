@@ -75,16 +75,8 @@ macro_rules! blob {
             /// # Panics
             /// Panics if the hex string cannot be decoded or if the decoded bytes
             /// don't match the expected length ($size).
-            pub fn from_hex(hex: &str) -> Self {
-                Self($crate::Blob::from_hex(hex))
-            }
-
-            /// Reverses the byte order of the blob in place.
-            ///
-            /// This is particularly useful for displaying values like transaction IDs
-            /// in their conventional reversed byte order.
-            pub fn reverse(&mut self) {
-                self.0.reverse();
+            pub fn from_hex(hex: &str) -> Result<Self, $crate::HexParseError> {
+                Ok(Self($crate::Blob::from_hex(hex)?))
             }
         }
 

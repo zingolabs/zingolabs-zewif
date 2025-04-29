@@ -1,12 +1,39 @@
-use std::ops::{
-    Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+use std::{
+    array::TryFromSliceError,
+    fmt,
+    ops::{
+        Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+    },
 };
 
+use bc_envelope::prelude::*;
 use anyhow::{Context, Result, bail};
 
 use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 use super::parser::prelude::*;
+
+use hex::FromHexError;
+
+/// Errors that can occur in decoding a blob from its hex-encoded representation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum HexParseError {
+    SliceInvalid { expected: usize, actual: usize },
+    HexInvalid(FromHexError),
+}
+
+impl fmt::Display for HexParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HexParseError::SliceInvalid { expected, actual } => {
+                write!(f, "Expected {} bytes, got {}", expected, actual)
+            }
+            HexParseError::HexInvalid(e) => write!(f, "Not a valid hex string: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for HexParseError {}
 
 /// A fixed-size byte array wrapper for safely handling binary data of known length.
 ///
@@ -157,13 +184,8 @@ impl<const N: usize> Blob<N> {
     /// let result = Blob::<5>::from_slice(slice);
     /// assert!(result.is_err());
     /// ```
-    pub fn from_slice(data: &[u8]) -> Result<Self> {
-        if data.len() != N {
-            bail!("Invalid data length: expected {}, got {}", N, data.len());
-        }
-        let mut bytes = [0u8; N];
-        bytes.copy_from_slice(data);
-        Ok(Self::new(bytes))
+    pub fn from_slice(data: &[u8]) -> Result<Self, TryFromSliceError> {
+        Ok(Self(<[u8; N]>::try_from(data)?))
     }
 
     /// Creates a `Blob` from a `Vec<u8>`.
@@ -179,44 +201,26 @@ impl<const N: usize> Blob<N> {
     /// let blob = Blob::<4>::from_vec(vec.clone()).unwrap();
     /// assert_eq!(blob.to_vec(), vec);
     /// ```
-    pub fn from_vec(data: Vec<u8>) -> Result<Self> {
+    pub fn from_vec(data: Vec<u8>) -> Result<Self, TryFromSliceError> {
         Self::from_slice(&data)
     }
 
-    /// Creates a `Blob` from a hexadecimal string.
-    ///
-    /// # Panics
-    /// Panics if the hex string cannot be decoded or if the decoded bytes
-    /// don't match the expected length N.
+    /// Parses a `Blob` from a hexadecimal string.
     ///
     /// # Examples
     /// ```
     /// # use zewif::Blob;
     ///
     /// let hex = "01020304";
-    /// let blob = Blob::<4>::from_hex(hex);
+    /// let blob = Blob::<4>::from_hex(hex).unwrap();
     /// assert_eq!(blob.as_slice(), &[1, 2, 3, 4]);
     /// ```
-    pub fn from_hex(hex: &str) -> Self {
-        let data = hex::decode(hex).expect("Decoding hex string");
-        Self::from_vec(data).expect("Creating Blob from hex")
-    }
-
-    /// Reverses the byte order of the blob in place.
-    ///
-    /// This is particularly useful for working with transaction IDs and other
-    /// values that are conventionally displayed in reverse byte order.
-    ///
-    /// # Examples
-    /// ```
-    /// # use zewif::Blob;
-    ///
-    /// let mut blob = Blob::<4>::new([1, 2, 3, 4]);
-    /// blob.reverse();
-    /// assert_eq!(blob.as_slice(), &[4, 3, 2, 1]);
-    /// ```
-    pub fn reverse(&mut self) {
-        self.0.reverse();
+    pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
+        let data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
+        Self::from_vec(data).map_err(|_| crate::HexParseError::SliceInvalid {
+            expected: N * 2,
+            actual: hex.len(),
+        })
     }
 }
 
@@ -300,14 +304,14 @@ impl<const N: usize> AsRef<[u8]> for Blob<N> {
     }
 }
 
-impl<const N: usize> std::fmt::Debug for Blob<N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<const N: usize> fmt::Debug for Blob<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Blob<{}>({})", N, hex::encode(self.0))
     }
 }
 
-impl<const N: usize> std::fmt::Display for Blob<N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<const N: usize> fmt::Display for Blob<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
 }
@@ -374,7 +378,7 @@ impl<const N: usize> Parse for Blob<N> {
         let data = parser
             .next(N)
             .with_context(|| format!("Parsing Blob<{}>", N))?;
-        Self::from_slice(data)
+        Ok(Self::from_slice(data)?)
     }
 }
 
@@ -404,7 +408,7 @@ impl<const N: usize> TryFrom<CBOR> for Blob<N> {
 
     fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
         let bytes = cbor.try_into_byte_string()?;
-        Blob::from_slice(&bytes)
+        Ok(Blob::from_slice(&bytes)?)
     }
 }
 

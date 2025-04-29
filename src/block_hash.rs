@@ -7,11 +7,10 @@ use std::{
     io::{self, Read, Write},
 };
 
-/// A transaction identifier (TxId) represented as a 32-byte hash.
+/// A transaction identifier (BlockHash) represented as a 32-byte hash.
 ///
-/// `TxId` is a specialized wrapper around a 32-byte array representing a transaction's
-/// unique identifier in the Zcash blockchain. Transaction IDs are double-SHA256 hashes
-/// of the transaction data (with specific rules for what parts are included in the hash).
+/// `BlockHash` is a specialized wrapper around a 32-byte array representing a block's
+/// unique identifier in the Zcash blockchain.
 ///
 /// # Zcash Concept Relation
 /// In Zcash (and Bitcoin-derived cryptocurrencies), transaction IDs are critical identifiers
@@ -20,35 +19,35 @@ use std::{
 /// - In block data structures to identify included transactions
 /// - In client APIs and explorers to look up transaction details
 ///
-/// Transaction IDs are displayed in reverse byte order by convention (to match
-/// Bitcoin's historical display format), while stored internally in little-endian order.
+/// Block hashes are displayed in reverse byte order by convention (to match Bitcoin's historical
+/// display format), while stored internally in little-endian order.
 ///
 /// # Data Preservation
-/// The `TxId` type preserves the exact 32-byte transaction identifier as found in wallet
+/// The `BlockHash` type preserves the exact 32-byte transaction identifier as found in wallet
 /// data files, ensuring that transaction references maintain their cryptographic integrity
 /// during wallet migrations.
 ///
 /// # Examples
 /// ```
-/// # use zewif::TxId;
-/// // Create a TxId from a byte array
+/// # use zewif::BlockHash;
+/// // Create a BlockHash from a byte array
 /// let tx_bytes = [0u8; 32];
-/// let txid = TxId::from_bytes(tx_bytes);
+/// let txid = BlockHash::from_bytes(tx_bytes);
 ///
-/// // Display the TxId in the conventional reversed format used by explorers
+/// // Display the BlockHash in the conventional reversed format used by explorers
 /// // Note: this would display as a string of 64 hex characters (zeros in this example)
-/// println!("Transaction ID: {}", txid);
+/// println!("Block Hash: {}", txid);
 /// ```
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct TxId([u8; 32]);
+pub struct BlockHash([u8; 32]);
 
-impl fmt::Debug for TxId {
+impl fmt::Debug for BlockHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TxId({})", self)
+        write!(f, "BlockHash({})", self)
     }
 }
 
-impl fmt::Display for TxId {
+impl fmt::Display for BlockHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The (byte-flipped) hex string is more useful than the raw bytes, because we can
         // look that up in RPC methods and block explorers.
@@ -58,67 +57,66 @@ impl fmt::Display for TxId {
     }
 }
 
-impl AsRef<[u8; 32]> for TxId {
+impl AsRef<[u8; 32]> for BlockHash {
     fn as_ref(&self) -> &[u8; 32] {
         &self.0
     }
 }
 
-impl From<TxId> for [u8; 32] {
-    fn from(value: TxId) -> Self {
+impl From<BlockHash> for [u8; 32] {
+    fn from(value: BlockHash) -> Self {
         value.0
     }
 }
 
-impl Parse for TxId {
-    /// Parses a `TxId` from a binary data stream.
+impl Parse for BlockHash {
+    /// Parses a `BlockHash` from a binary data stream.
     ///
     /// # Examples
     /// ```no_run
-    /// # use zewif::TxId;
+    /// # use zewif::BlockHash;
     /// # use zewif::parser::Parser;
     /// # use zewif::parse;
     /// # use anyhow::Result;
     /// #
     /// # fn example(parser: &mut Parser) -> Result<()> {
     /// // Parse a transaction ID from a binary stream
-    /// let txid = parse!(parser, TxId, "transaction ID")?;
+    /// let txid = parse!(parser, BlockHash, "transaction ID")?;
     /// # Ok(())
     /// # }
     /// ```
     fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(TxId::read(p)?)
+        Ok(BlockHash::read(p)?)
     }
 }
 
-impl TxId {
-    /// Creates a new `TxId` from a 32-byte array.
+impl BlockHash {
+    /// Creates a new `BlockHash` from a 32-byte array.
     ///
-    /// This is the primary constructor for `TxId` when you have the raw transaction
+    /// This is the primary constructor for `BlockHash` when you have the raw transaction
     /// hash available.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::TxId;
+    /// # use zewif::BlockHash;
     /// // Usually this would be a real transaction hash
     /// let bytes = [0u8; 32];
-    /// let txid = TxId::from_bytes(bytes);
+    /// let txid = BlockHash::from_bytes(bytes);
     /// ```
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
-        TxId(bytes)
+        BlockHash(bytes)
     }
 
-    /// Parses a `TxId` from a canonically-encoded (byte-reversed) hexadecimal string.
+    /// Parses a `BlockHash` from a canonically-encoded (byte-reversed) hexadecimal string.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::TxId;
+    /// # use zewif::BlockHash;
     ///
-    /// let hex = "0000000000000000000000000000000000000000000000000000000000000001";
-    /// let blob = TxId::from_hex(hex).unwrap();
-    /// let mut expected = [0u8; 32];
-    /// expected[0] = 1;
-    /// assert_eq!(blob.as_ref(), &expected);
+    /// let hex = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+    /// let block_hash = BlockHash::from_hex(hex).unwrap();
+    /// assert_eq!(block_hash.as_ref()[0], 0x6f);
+    /// assert_eq!(format!("{}", block_hash), hex);
     /// ```
     pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
         let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
@@ -132,7 +130,7 @@ impl TxId {
         })?))
     }
 
-    /// Reads a `TxId` from any source implementing the `Read` trait.
+    /// Reads a `BlockHash` from any source implementing the `Read` trait.
     ///
     /// This method is useful when reading transaction IDs directly from files
     /// or other byte streams.
@@ -143,7 +141,7 @@ impl TxId {
     /// # Examples
     /// ```no_run
     /// # use std::io::Cursor;
-    /// # use zewif::TxId;
+    /// # use zewif::BlockHash;
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
@@ -151,18 +149,18 @@ impl TxId {
     /// let data = vec![0u8; 32];
     /// let mut cursor = Cursor::new(data);
     ///
-    /// // Read a TxId from the cursor
-    /// let txid = TxId::read(&mut cursor)?;
+    /// // Read a BlockHash from the cursor
+    /// let txid = BlockHash::read(&mut cursor)?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn read<R: Read>(mut reader: R) -> io::Result<Self> {
         let mut hash = [0u8; 32];
         reader.read_exact(&mut hash)?;
-        Ok(TxId::from_bytes(hash))
+        Ok(BlockHash::from_bytes(hash))
     }
 
-    /// Writes a `TxId` to any destination implementing the `Write` trait.
+    /// Writes a `BlockHash` to any destination implementing the `Write` trait.
     ///
     /// This method is useful when serializing transaction IDs to files or
     /// other byte streams.
@@ -173,14 +171,14 @@ impl TxId {
     /// # Examples
     /// ```no_run
     /// # use std::io::Cursor;
-    /// # use zewif::TxId;
+    /// # use zewif::BlockHash;
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// let txid = TxId::from_bytes([0u8; 32]);
+    /// let txid = BlockHash::from_bytes([0u8; 32]);
     /// let mut buffer = Vec::new();
     ///
-    /// // Write the TxId to the buffer
+    /// // Write the BlockHash to the buffer
     /// txid.write(&mut buffer)?;
     ///
     /// // The buffer now contains the 32-byte transaction ID
@@ -194,56 +192,56 @@ impl TxId {
     }
 }
 
-impl From<TxId> for CBOR {
-    fn from(value: TxId) -> Self {
+impl From<BlockHash> for CBOR {
+    fn from(value: BlockHash) -> Self {
         CBOR::to_byte_string(value.0)
     }
 }
 
-impl From<&TxId> for CBOR {
-    fn from(value: &TxId) -> Self {
+impl From<&BlockHash> for CBOR {
+    fn from(value: &BlockHash) -> Self {
         CBOR::to_byte_string(value.0)
     }
 }
 
-impl TryFrom<CBOR> for TxId {
+impl TryFrom<CBOR> for BlockHash {
     type Error = anyhow::Error;
 
     fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
         let bytes = cbor.try_into_byte_string()?;
         if bytes.len() != 32 {
             bail!(
-                "Invalid TxId length: expected 32 bytes, got {}",
+                "Invalid BlockHash length: expected 32 bytes, got {}",
                 bytes.len()
             );
         }
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);
-        Ok(TxId::from_bytes(hash))
+        Ok(BlockHash::from_bytes(hash))
     }
 }
 
-impl From<TxId> for Envelope {
-    fn from(value: TxId) -> Self {
+impl From<BlockHash> for Envelope {
+    fn from(value: BlockHash) -> Self {
         Envelope::new(CBOR::from(value))
     }
 }
 
-impl TryFrom<Envelope> for TxId {
+impl TryFrom<Envelope> for BlockHash {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.extract_subject().context("TxId")
+        envelope.extract_subject().context("BlockHash")
     }
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for TxId {
+impl crate::RandomInstance for BlockHash {
     fn random() -> Self {
         let mut rng = bc_rand::thread_rng();
         Self(bc_rand::rng_random_array(&mut rng))
     }
 }
 
-test_cbor_roundtrip!(TxId);
-test_envelope_roundtrip!(TxId);
+test_cbor_roundtrip!(BlockHash);
+test_envelope_roundtrip!(BlockHash);
