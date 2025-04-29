@@ -119,9 +119,9 @@ impl From<SecondsSinceEpoch> for CBOR {
 }
 
 impl TryFrom<CBOR> for SecondsSinceEpoch {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         cbor.try_into().map(SecondsSinceEpoch)
     }
 }

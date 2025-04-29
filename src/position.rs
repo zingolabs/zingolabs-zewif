@@ -72,9 +72,9 @@ impl From<&Position> for CBOR {
 }
 
 impl TryFrom<CBOR> for Position {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(value: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(value: CBOR) -> dcbor::Result<Self> {
         let position: u32 = value.try_into()?;
         Ok(Position(position))
     }

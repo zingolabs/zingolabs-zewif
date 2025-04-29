@@ -1,11 +1,8 @@
 use super::parser::prelude::*;
-use crate::{HexParseError, test_cbor_roundtrip, test_envelope_roundtrip};
-use anyhow::{Context, Result, bail};
+use crate::{ HexParseError, test_cbor_roundtrip, test_envelope_roundtrip };
+use anyhow::{ Context, Result };
 use bc_envelope::prelude::*;
-use std::{
-    fmt,
-    io::{self, Read, Write},
-};
+use std::{ fmt, io::{ self, Read, Write } };
 
 /// A transaction identifier (BlockHash) represented as a 32-byte hash.
 ///
@@ -122,12 +119,16 @@ impl BlockHash {
         let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
         data.reverse();
 
-        Ok(Self(<[u8; 32]>::try_from(&data[..]).map_err(|_| {
-            crate::HexParseError::SliceInvalid {
-                expected: 64,
-                actual: hex.len(),
-            }
-        })?))
+        Ok(
+            Self(
+                <[u8; 32]>::try_from(&data[..]).map_err(|_| {
+                    crate::HexParseError::SliceInvalid {
+                        expected: 64,
+                        actual: hex.len(),
+                    }
+                })?
+            )
+        )
     }
 
     /// Reads a `BlockHash` from any source implementing the `Read` trait.
@@ -205,14 +206,13 @@ impl From<&BlockHash> for CBOR {
 }
 
 impl TryFrom<CBOR> for BlockHash {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
         if bytes.len() != 32 {
-            bail!(
-                "Invalid BlockHash length: expected 32 bytes, got {}",
-                bytes.len()
+            return Err(
+                format!("Invalid BlockHash length: expected 32 bytes, got {}", bytes.len()).into()
             );
         }
         let mut hash = [0u8; 32];

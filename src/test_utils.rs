@@ -111,7 +111,7 @@ pub fn test_cbor_roundtrip<T>(iterations: usize, print: bool)
 where
     T: RandomInstance
         + Into<CBOR>
-        + TryFrom<CBOR, Error = anyhow::Error>
+        + TryFrom<CBOR, Error = dcbor::Error>
         + Clone
         + std::fmt::Debug
         + PartialEq,

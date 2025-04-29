@@ -98,9 +98,9 @@ impl From<ExpiryHeight> for CBOR {
 }
 
 impl TryFrom<CBOR> for ExpiryHeight {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         // let expiry_height: u32 = cbor.try_into()?;
         // Ok(ExpiryHeight::from(expiry_height))
         cbor.try_into().map(ExpiryHeight)

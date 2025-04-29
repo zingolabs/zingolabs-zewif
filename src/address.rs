@@ -1,5 +1,5 @@
-use crate::{DebugOption, Indexed, test_envelope_roundtrip};
-use anyhow::Context;
+use crate::{ DebugOption, Indexed, test_envelope_roundtrip };
+use anyhow::{ Result, Context };
 use bc_envelope::prelude::*;
 
 use super::ProtocolAddress;

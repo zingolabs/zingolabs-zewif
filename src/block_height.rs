@@ -216,9 +216,9 @@ impl From<&BlockHeight> for CBOR {
 }
 
 impl TryFrom<CBOR> for BlockHeight {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         Ok(BlockHeight::from(u32::try_from(cbor)?))
     }
 }

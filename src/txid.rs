@@ -1,6 +1,6 @@
 use super::parser::prelude::*;
 use crate::{HexParseError, test_cbor_roundtrip, test_envelope_roundtrip};
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 use std::{
     fmt,
@@ -207,15 +207,15 @@ impl From<&TxId> for CBOR {
 }
 
 impl TryFrom<CBOR> for TxId {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
         if bytes.len() != 32 {
-            bail!(
+            return Err(format!(
                 "Invalid TxId length: expected 32 bytes, got {}",
                 bytes.len()
-            );
+            ).into());
         }
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);

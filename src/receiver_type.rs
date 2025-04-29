@@ -97,10 +97,10 @@ impl From<ReceiverType> for CBOR {
 }
 
 impl TryFrom<CBOR> for ReceiverType {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self> {
-        cbor.try_into_text()?.try_into()
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
+        Ok(cbor.try_into_text()?.try_into()?)
     }
 }
 

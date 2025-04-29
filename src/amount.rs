@@ -332,11 +332,11 @@ impl From<&Amount> for CBOR {
 }
 
 impl TryFrom<CBOR> for Amount {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let value = i64::try_from(cbor)?;
-        Amount::try_from(value)
+        Ok(Amount::try_from(value)?)
     }
 }
 

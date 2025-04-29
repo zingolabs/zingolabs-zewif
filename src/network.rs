@@ -95,10 +95,10 @@ impl From<Network> for CBOR {
 }
 
 impl TryFrom<CBOR> for Network {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
-        cbor.try_into_text()?.try_into()
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
+        Ok(cbor.try_into_text()?.try_into()?)
     }
 }
 

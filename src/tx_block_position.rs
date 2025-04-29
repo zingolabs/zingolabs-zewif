@@ -37,15 +37,15 @@ impl From<TxBlockPosition> for CBOR {
 }
 
 impl TryFrom<CBOR> for TxBlockPosition {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(value: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(value: CBOR) -> dcbor::Result<Self> {
         if let CBORCase::Map(map) = value.into_case() {
             let block_hash: BlockHash = map.extract("block_hash")?;
             let index: u32 = map.extract("index")?;
             Ok(TxBlockPosition { block_hash, index })
         } else {
-            Err(anyhow::anyhow!("Expected a CBOR map"))
+            Err("Expected a CBOR map".into())
         }
     }
 }

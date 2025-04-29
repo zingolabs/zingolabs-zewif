@@ -79,10 +79,10 @@ impl From<BranchId> for CBOR {
 }
 
 impl TryFrom<CBOR> for BranchId {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self> {
-        BranchId::try_from(u32::try_from(cbor)?).map_err(|e| anyhow::anyhow!(e))
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
+        Ok(BranchId::try_from(u32::try_from(cbor)?)?)
     }
 }
 

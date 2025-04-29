@@ -2,14 +2,21 @@ use std::{
     array::TryFromSliceError,
     fmt,
     ops::{
-        Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+        Index,
+        IndexMut,
+        Range,
+        RangeFrom,
+        RangeFull,
+        RangeInclusive,
+        RangeTo,
+        RangeToInclusive,
     },
 };
 
 use bc_envelope::prelude::*;
-use anyhow::{Context, Result, bail};
+use anyhow::{ Context, Error, Result };
 
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::{ test_cbor_roundtrip, test_envelope_roundtrip };
 
 use super::parser::prelude::*;
 
@@ -18,7 +25,10 @@ use hex::FromHexError;
 /// Errors that can occur in decoding a blob from its hex-encoded representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HexParseError {
-    SliceInvalid { expected: usize, actual: usize },
+    SliceInvalid {
+        expected: usize,
+        actual: usize,
+    },
     HexInvalid(FromHexError),
 }
 
@@ -371,13 +381,8 @@ impl<const N: usize> From<&[u8; N]> for Blob<N> {
 /// # Errors
 /// Returns an error if the parser does not have N bytes remaining.
 impl<const N: usize> Parse for Blob<N> {
-    fn parse(parser: &mut Parser) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        let data = parser
-            .next(N)
-            .with_context(|| format!("Parsing Blob<{}>", N))?;
+    fn parse(parser: &mut Parser) -> Result<Self> where Self: Sized {
+        let data = parser.next(N).with_context(|| format!("Parsing Blob<{}>", N))?;
         Ok(Self::from_slice(data)?)
     }
 }
@@ -404,11 +409,14 @@ impl<const N: usize> From<&Blob<N>> for CBOR {
 }
 
 impl<const N: usize> TryFrom<CBOR> for Blob<N> {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
-        Ok(Blob::from_slice(&bytes)?)
+        let blob = Blob::from_slice(&bytes).map_err(|e|
+            dcbor::Error::Custom(format!("Blob: {e}"))
+        )?;
+        Ok(blob)
     }
 }
 
@@ -419,9 +427,9 @@ impl<const N: usize> From<Blob<N>> for Envelope {
 }
 
 impl<const N: usize> TryFrom<Envelope> for Blob<N> {
-    type Error = dcbor::Error;
+    type Error = Error;
 
-    fn try_from(envelope: Envelope) -> dcbor::Result<Self> {
+    fn try_from(envelope: Envelope) -> Result<Self> {
         envelope.extract_subject().context("Blob")
     }
 }

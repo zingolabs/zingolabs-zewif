@@ -416,9 +416,9 @@ impl From<&Data> for CBOR {
 }
 
 impl TryFrom<CBOR> for Data {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
         Ok(Data::from_slice(&bytes))
     }

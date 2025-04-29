@@ -1,9 +1,16 @@
 use super::Data;
-use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
-use anyhow::{Context, Result, bail};
+use crate::{ parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip };
+use anyhow::{ Context, Result };
 use bc_envelope::prelude::*;
 use std::ops::{
-    Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
+    Index,
+    IndexMut,
+    Range,
+    RangeFrom,
+    RangeFull,
+    RangeInclusive,
+    RangeTo,
+    RangeToInclusive,
 };
 
 /// A Bitcoin-style script for spending or encumbering coins in transparent transactions.
@@ -203,12 +210,12 @@ impl From<&Script> for CBOR {
 }
 
 impl TryFrom<CBOR> for Script {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
-        if bytes.len() > 0xFFFF {
-            bail!("Script length exceeds maximum size of 65535 bytes");
+        if bytes.len() > 0xffff {
+            return Err("Script length exceeds maximum size of 65535 bytes".into());
         }
         Ok(Script(Data::from_vec(bytes)))
     }

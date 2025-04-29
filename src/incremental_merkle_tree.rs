@@ -211,7 +211,7 @@ impl TryFrom<Envelope> for IncrementalMerkleTree {
                 if parent.is_null() {
                     Ok(None)
                 } else {
-                    parent.try_into().map(Some)
+                    Ok(Some(parent.try_into()?))
                 }
             })
             .collect();

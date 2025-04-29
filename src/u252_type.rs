@@ -194,11 +194,11 @@ impl From<&u252> for CBOR {
 }
 
 impl TryFrom<CBOR> for u252 {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(cbor: CBOR) -> Result<Self, Self::Error> {
+    fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
-        Self::try_from(&bytes)
+        Ok(Self::try_from(&bytes)?)
     }
 }
 
