@@ -2008,6 +2008,5 @@ dependencies = [
  "dcbor",
  "hex",
  "rand",
- "sha2",
  "zcash_protocol",
 ]

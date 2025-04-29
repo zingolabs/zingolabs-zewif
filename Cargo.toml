@@ -12,7 +12,6 @@ bc-crypto = "^0.8.0"
 anyhow = "1.0.95"
 chrono = "0.4.39"
 hex = "0.4.3"
-sha2 = "^0.10.6"
 zcash_protocol = "0.5"
 
 [features]

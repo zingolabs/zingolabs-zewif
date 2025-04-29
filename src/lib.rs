@@ -108,7 +108,6 @@ mod_use!(branch_id);
 mod_use!(compact_size);
 mod_use!(data);
 mod_use!(derivation_info);
-mod_use!(digest_utils);
 mod_use!(expiry_height);
 mod_use!(incremental_merkle_tree);
 mod_use!(incremental_witness);
