@@ -9,9 +9,9 @@ chrono = "0.4.39"
 dcbor = "0.17"
 hex = "0.4.3"
 sha2 = "^0.10.6"
-bc-components = "^0.19.0"
-bc-envelope = "^0.26.0"
-bc-crypto = "^0.7.0"
+bc-components = "^0.20.0"
+bc-envelope = "^0.27.0"
+bc-crypto = "^0.8.0"
 zcash_protocol = "0.5"
 
 [features]
@@ -19,5 +19,5 @@ default = []
 with-context = []
 
 [dev-dependencies]
-bc-rand = "^0.3.0"
+bc-rand = "^0.4.0"
 rand = "^0.8.5"

@@ -6,8 +6,8 @@ use std::{
     },
 };
 
-use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
+use anyhow::{Context, Result, bail};
 
 use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
@@ -419,9 +419,9 @@ impl<const N: usize> From<Blob<N>> for Envelope {
 }
 
 impl<const N: usize> TryFrom<Envelope> for Blob<N> {
-    type Error = anyhow::Error;
+    type Error = dcbor::Error;
 
-    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+    fn try_from(envelope: Envelope) -> dcbor::Result<Self> {
         envelope.extract_subject().context("Blob")
     }
 }
