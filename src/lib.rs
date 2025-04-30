@@ -104,7 +104,6 @@ mod_use!(bip_39_mnemonic);
 mod_use!(blob);
 mod_use!(block_hash);
 mod_use!(block_height);
-mod_use!(branch_id);
 mod_use!(compact_size);
 mod_use!(data);
 mod_use!(derivation_info);
