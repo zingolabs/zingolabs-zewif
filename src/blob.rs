@@ -226,7 +226,7 @@ impl<const N: usize> Blob<N> {
     /// assert_eq!(blob.as_slice(), &[1, 2, 3, 4]);
     /// ```
     pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
-        let data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
+        let data = hex::decode(hex).map_err(crate::HexParseError::HexInvalid)?;
         Self::from_vec(data).map_err(|_| crate::HexParseError::SliceInvalid {
             expected: N * 2,
             actual: hex.len(),
