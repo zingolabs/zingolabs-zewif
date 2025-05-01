@@ -121,7 +121,7 @@ impl TxId {
     /// assert_eq!(blob.as_ref(), &expected);
     /// ```
     pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
-        let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
+        let mut data = hex::decode(hex).map_err(crate::HexParseError::HexInvalid)?;
         data.reverse();
 
         Ok(Self(<[u8; 32]>::try_from(&data[..]).map_err(|_| {

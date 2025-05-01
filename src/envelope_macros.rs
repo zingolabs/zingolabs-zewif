@@ -28,7 +28,7 @@ macro_rules! blob_envelope {
 
         #[cfg(test)]
         mod test_envelope {
-            use crate::test_envelope_roundtrip;
+            use $crate::test_envelope_roundtrip;
 
             use super::$name;
 

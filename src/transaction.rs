@@ -134,7 +134,7 @@ impl From<Transaction> for Envelope {
             .add_optional_assertion("raw", value.raw)
             .add_optional_assertion("target_height", value.target_height)
             .add_optional_assertion("mined_height", value.mined_height)
-            .add_optional_assertion("block_position", value.block_position.map(CBOR::from));
+            .add_optional_assertion("block_position", value.block_position);
         value.attachments.add_to_envelope(e)
     }
 }
@@ -185,7 +185,7 @@ impl crate::RandomInstance for Transaction {
 }
 
 #[cfg(test)]
-mod test_envelope {
+mod envelope_tests {
     use crate::test_envelope_roundtrip;
     use super::Transaction;
 

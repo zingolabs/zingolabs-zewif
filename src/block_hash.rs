@@ -116,7 +116,7 @@ impl BlockHash {
     /// assert_eq!(format!("{}", block_hash), hex);
     /// ```
     pub fn from_hex(hex: &str) -> Result<Self, HexParseError> {
-        let mut data = hex::decode(hex).map_err(|e| crate::HexParseError::HexInvalid(e))?;
+        let mut data = hex::decode(hex).map_err(crate::HexParseError::HexInvalid)?;
         data.reverse();
 
         Ok(
