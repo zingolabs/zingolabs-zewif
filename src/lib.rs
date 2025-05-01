@@ -112,6 +112,7 @@ mod_use!(incremental_merkle_tree);
 mod_use!(incremental_witness);
 mod_use!(indexed);
 mod_use!(int_id);
+mod_use!(memo);
 mod_use!(mnemonic_language);
 mod_use!(network);
 mod_use!(non_hardened_child_index);

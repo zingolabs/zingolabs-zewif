@@ -1,7 +1,7 @@
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use crate::{Amount, Blob, Indexed};
+use crate::{Amount, Blob, Indexed, Memo};
 
 /// Represents a sent output in a Sapling shielded transaction within a Zcash wallet.
 ///
@@ -59,8 +59,17 @@ use crate::{Amount, Blob, Indexed};
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaplingSentOutput {
-    /// The index of the output in the transaction.
+    /// The index of the output in the transaction's Sapling bundle.
     index: usize,
+
+    /// The string representation of the address to which the output was sent.
+    ///
+    /// This should be either a Sapling address or a Unified address with a Sapling receiver.
+    /// We preserve the original address string because in the case of Unified addresses, it is not
+    /// otherwise possible to reconstruct the data for receivers other than the Sapling receiver,
+    /// and as a consequence the recipient address in a restored wallet would appear different than
+    /// in the source wallet.
+    recipient_address: String,
 
     /// The diversifier used in deriving the recipient's shielded address.
     ///
@@ -90,6 +99,9 @@ pub struct SaplingSentOutput {
     /// the note's contents. It is stored here to allow reconstruction of the commitment
     /// for proving purposes.
     rcm: Blob<32>,
+
+    /// The memo attached to this output, if any.
+    memo: Option<Memo>,
 }
 
 impl Indexed for SaplingSentOutput {
@@ -120,11 +132,50 @@ impl SaplingSentOutput {
     pub fn new() -> Self {
         Self {
             index: 0,
+            recipient_address: "".to_string(),
             diversifier: Blob::default(),
             receipient_public_key: Blob::default(),
-            value: Amount::zero(),
             rcm: Blob::default(),
+            value: Amount::zero(),
+            memo: None,
         }
+    }
+
+    /// Creates a new `SaplingSentOutput` from its constituent parts.
+    pub fn from_parts(
+        index: usize,
+        recipient_address: String,
+        diversifier: Blob<11>,
+        receipient_public_key: Blob<32>,
+        rcm: Blob<32>,
+        value: Amount,
+        memo: Option<Memo>,
+    ) -> Self {
+        Self {
+            index,
+            recipient_address,
+            diversifier,
+            receipient_public_key,
+            rcm,
+            value,
+            memo,
+        }
+    }
+
+    /// Returns the string representation of the address used in construction of the output.
+    ///
+    /// This will be either a Sapling address or a Unified address with a Sapling receiver.
+    /// We preserve the original address string because in the case of Unified addresses, it is not
+    /// otherwise possible to reconstruct the data for receivers other than the Sapling receiver,
+    /// and as a consequence the recipient address in a restored wallet would appear different than
+    /// in the source wallet.
+    pub fn recipient_address(&self) -> &str {
+        &self.recipient_address
+    }
+
+    /// Sets the string representation of the address used in construction of the output.
+    pub fn set_recipient_address(&mut self, recipient_address: String) {
+        self.recipient_address = recipient_address;
     }
 
     /// Returns a reference to the diversifier used in the recipient's address derivation.
@@ -278,6 +329,16 @@ impl SaplingSentOutput {
     pub fn set_rcm(&mut self, rcm: Blob<32>) {
         self.rcm = rcm;
     }
+
+    /// Returns the memo associated with the output, if known.
+    pub fn memo(&self) -> Option<&Memo> {
+        self.memo.as_ref()
+    }
+
+    /// Sets the memo associated with the output.
+    pub fn set_memo(&mut self, memo: Option<Memo>) {
+        self.memo = memo;
+    }
 }
 
 impl Default for SaplingSentOutput {
@@ -290,10 +351,12 @@ impl From<SaplingSentOutput> for Envelope {
     fn from(value: SaplingSentOutput) -> Self {
         Envelope::new(value.index)
             .add_type("SaplingSentOutput")
+            .add_assertion("receipient_address", value.recipient_address)
             .add_assertion("diversifier", value.diversifier)
             .add_assertion("receipient_public_key", value.receipient_public_key)
             .add_assertion("value", value.value)
             .add_assertion("rcm", value.rcm)
+            .add_optional_assertion("memo", value.memo)
     }
 }
 
@@ -305,6 +368,9 @@ impl TryFrom<Envelope> for SaplingSentOutput {
             .check_type_envelope("SaplingSentOutput")
             .context("SaplingSentOutput")?;
         let index = envelope.extract_subject().context("index")?;
+        let recipient_address = envelope
+            .extract_object_for_predicate("recipient_address")
+            .context("recipient_address")?;
         let diversifier = envelope
             .extract_object_for_predicate("diversifier")
             .context("diversifier")?;
@@ -317,34 +383,40 @@ impl TryFrom<Envelope> for SaplingSentOutput {
         let rcm = envelope
             .extract_object_for_predicate("rcm")
             .context("rcm")?;
+        let memo = envelope
+            .extract_optional_object_for_predicate("memo")
+            .context("memo")?;
 
         Ok(SaplingSentOutput {
             index,
+            recipient_address,
             diversifier,
             receipient_public_key,
             value,
             rcm,
+            memo,
         })
-    }
-}
-
-#[cfg(test)]
-impl crate::RandomInstance for SaplingSentOutput {
-    fn random() -> Self {
-        Self {
-            index: 0,
-            diversifier: Blob::random(),
-            receipient_public_key: Blob::random(),
-            value: Amount::random(),
-            rcm: Blob::random(),
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::SaplingSentOutput;
-    use crate::test_envelope_roundtrip;
+    use crate::{Amount, Blob, Memo, test_envelope_roundtrip};
+
+    impl crate::RandomInstance for SaplingSentOutput {
+        fn random() -> Self {
+            Self {
+                index: 0,
+                recipient_address: String::random(),
+                diversifier: Blob::random(),
+                receipient_public_key: Blob::random(),
+                value: Amount::random(),
+                rcm: Blob::random(),
+                memo: Some(Memo::random()),
+            }
+        }
+    }
 
     test_envelope_roundtrip!(SaplingSentOutput);
 }
