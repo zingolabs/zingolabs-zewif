@@ -11,8 +11,6 @@ use bc_envelope::prelude::*;
 
 use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-use super::parser::prelude::*;
-
 use hex::FromHexError;
 
 /// Errors that can occur in decoding a blob from its hex-encoded representation.
@@ -71,23 +69,6 @@ impl std::error::Error for HexParseError {}
 ///
 /// // Convert to hex for display
 /// let hex_string = hex::encode(blob.as_slice());
-/// ```
-///
-/// ## Parsing from Binary Data
-/// ```no_run
-/// # use zewif::Blob;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a 32-byte transaction ID
-/// let txid = parse!(parser, Blob<32>, "transaction ID")?;
-///
-/// // Parse a 64-byte signature
-/// let signature = parse!(parser, Blob<64>, "signature")?;
-/// # Ok(())
-/// # }
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Blob<const N: usize>([u8; N]);
@@ -343,42 +324,6 @@ impl<const N: usize> From<&[u8]> for Blob<N> {
 impl<const N: usize> From<&[u8; N]> for Blob<N> {
     fn from(data: &[u8; N]) -> Self {
         Self::from_vec(data.to_vec()).unwrap()
-    }
-}
-
-/// Implementation of the `Parse` trait for fixed-size byte arrays.
-///
-/// This allows `Blob<N>` to be directly parsed from a binary stream using the
-/// `parse!` macro, which is particularly useful when reading ZCash structures
-/// like transaction IDs, keys, and other fixed-size fields.
-///
-/// # Examples
-/// ```no_run
-/// # use zewif::Blob;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a 32-byte transaction hash from a binary stream
-/// let tx_hash = parse!(parser, Blob<32>, "transaction hash")?;
-///
-/// // The parse macro adds helpful context for error messages
-/// # Ok(())
-/// # }
-/// ```
-///
-/// # Errors
-/// Returns an error if the parser does not have N bytes remaining.
-impl<const N: usize> Parse for Blob<N> {
-    fn parse(parser: &mut Parser) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        let data = parser
-            .next(N)
-            .with_context(|| format!("Parsing Blob<{}>", N))?;
-        Ok(Self::from_slice(data)?)
     }
 }
 

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use bc_envelope::prelude::*;
 
 use crate::{IncrementalWitness, blob, blob_envelope};

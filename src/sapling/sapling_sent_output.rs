@@ -351,7 +351,7 @@ impl From<SaplingSentOutput> for Envelope {
     fn from(value: SaplingSentOutput) -> Self {
         Envelope::new(value.index)
             .add_type("SaplingSentOutput")
-            .add_assertion("receipient_address", value.recipient_address)
+            .add_assertion("recipient_address", value.recipient_address)
             .add_assertion("diversifier", value.diversifier)
             .add_assertion("receipient_public_key", value.receipient_public_key)
             .add_assertion("value", value.value)

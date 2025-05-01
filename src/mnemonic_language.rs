@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// The language used for BIP-39/BIP-44 mnemonic seed phrases in a wallet.
 ///
@@ -157,32 +157,6 @@ impl std::fmt::Display for MnemonicLanguage {
 impl std::fmt::Debug for MnemonicLanguage {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
-    }
-}
-
-/// Parses a mnemonic language from binary data
-///
-/// This implementation allows `MnemonicLanguage` to be parsed from a binary
-/// stream using the `parse!` macro, which is particularly useful when reading
-/// wallet file data.
-///
-/// # Examples
-/// ```no_run
-/// # use zewif::MnemonicLanguage;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a mnemonic language from wallet binary data
-/// let language = parse!(parser, MnemonicLanguage, "mnemonic language")?;
-/// # Ok(())
-/// # }
-/// ```
-impl Parse for MnemonicLanguage {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        let value = parse!(p, "language value")?;
-        MnemonicLanguage::from_u32(value)
     }
 }
 

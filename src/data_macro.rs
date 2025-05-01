@@ -129,17 +129,6 @@ macro_rules! data {
             }
         }
 
-        impl $crate::parser::Parse for $name {
-            /// Parses this type from a binary data stream.
-            ///
-            /// This implementation allows the type to be used with the `parse!` macro.
-            /// The data is parsed as a length-prefixed byte array using a `CompactSize`
-            /// value to indicate the length.
-            fn parse(parser: &mut $crate::parser::Parser) -> ::anyhow::Result<Self> {
-                Ok(Self($crate::Data::parse(parser)?))
-            }
-        }
-
         impl From<$name> for bc_envelope::prelude::CBOR {
             fn from(data: $name) -> Self {
                 bc_envelope::prelude::CBOR::to_byte_string(data.0)

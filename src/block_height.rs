@@ -3,7 +3,6 @@ use std::cmp::{Ord, Ordering};
 use std::fmt;
 use std::ops::{Add, Sub};
 
-use crate::{parse, parser::prelude::*};
 use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// A block's position in the blockchain, represented as a distance from the genesis block.
@@ -192,14 +191,6 @@ impl Sub<BlockHeight> for BlockHeight {
 
     fn sub(self, other: BlockHeight) -> u32 {
         self.0.saturating_sub(other.0)
-    }
-}
-
-/// Parses a BlockHeight from a binary data stream
-impl Parse for BlockHeight {
-    fn parse(p: &mut Parser) -> anyhow::Result<Self> {
-        let height = parse!(p, u32, "BlockHeight")?;
-        Ok(BlockHeight::from(height))
     }
 }
 

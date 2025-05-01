@@ -1,4 +1,3 @@
-use super::parser::prelude::*;
 use crate::{ HexParseError, test_cbor_roundtrip, test_envelope_roundtrip };
 use anyhow::{ Context, Result };
 use bc_envelope::prelude::*;
@@ -63,27 +62,6 @@ impl AsRef<[u8; 32]> for BlockHash {
 impl From<BlockHash> for [u8; 32] {
     fn from(value: BlockHash) -> Self {
         value.0
-    }
-}
-
-impl Parse for BlockHash {
-    /// Parses a `BlockHash` from a binary data stream.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use zewif::BlockHash;
-    /// # use zewif::parser::Parser;
-    /// # use zewif::parse;
-    /// # use anyhow::Result;
-    /// #
-    /// # fn example(parser: &mut Parser) -> Result<()> {
-    /// // Parse a transaction ID from a binary stream
-    /// let txid = parse!(parser, BlockHash, "transaction ID")?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(BlockHash::read(p)?)
     }
 }
 

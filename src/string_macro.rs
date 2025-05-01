@@ -70,17 +70,6 @@ macro_rules! string {
             }
         }
 
-        impl $crate::parser::Parse for $name {
-            /// Parses this type from a binary data stream.
-            ///
-            /// This implementation allows the type to be used with the `parse!` macro.
-            /// The string is assumed to be encoded in the binary format as a length-prefixed
-            /// UTF-8 string.
-            fn parse(p: &mut $crate::parser::Parser) -> ::anyhow::Result<Self> {
-                Ok(Self($crate::parse!(p, "string")?))
-            }
-        }
-
         impl From<$name> for String {
             /// Converts this wrapped string type to a standard Rust String.
             fn from(s: $name) -> Self {

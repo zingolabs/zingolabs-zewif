@@ -59,22 +59,6 @@
 //! wallet.add_account(account);
 //! zewif.add_wallet(wallet);
 //! ```
-//!
-//! ## Binary Parsing
-//!
-//! ZeWIF provides tools for parsing binary data:
-//!
-//! ```no_run
-//! use zewif::{parse, parser::prelude::*, TxId};
-//! use anyhow::Result;
-//!
-//! # fn example() -> Result<()> {
-//! # let mut parser = Parser::new(&[0u8; 32]);
-//! // Parse a transaction ID from a binary stream
-//! let txid = parse!(&mut parser, TxId, "Transaction ID")?;
-//! # Ok(())
-//! # }
-//! ```
 
 // Macros
 mod blob_macro;
@@ -90,7 +74,6 @@ mod_use!(test_utils);
 
 // Modules requiring qualified paths
 pub mod orchard;
-pub mod parser;
 pub mod sapling;
 pub mod transparent;
 
@@ -103,39 +86,33 @@ mod_use!(bip_39_mnemonic);
 mod_use!(blob);
 mod_use!(block_hash);
 mod_use!(block_height);
-mod_use!(compact_size);
 mod_use!(data);
 mod_use!(derivation_info);
 mod_use!(expiry_height);
 mod_use!(incremental_witness);
 mod_use!(indexed);
-mod_use!(int_id);
 mod_use!(memo);
 mod_use!(mnemonic_language);
 mod_use!(network);
 mod_use!(non_hardened_child_index);
-mod_use!(phgr_proof);
 mod_use!(position);
 mod_use!(protocol_address);
-mod_use!(receiver_type);
 mod_use!(script);
-mod_use!(seconds_since_epoch);
 mod_use!(seed);
 mod_use!(seed_material);
+mod_use!(seed_fingerprint);
 mod_use!(string_utils);
 mod_use!(transaction_status);
 mod_use!(transaction);
 mod_use!(tx_block_position);
 mod_use!(tx_out_point);
 mod_use!(txid);
-mod_use!(u160_type);
-mod_use!(u252_type);
-mod_use!(u256_type);
 mod_use!(unified_address);
 mod_use!(zewif_envelope);
 mod_use!(zewif_impl);
 mod_use!(zewif_wallet);
 
+pub use blob::HexParseError;
 use std::fmt::{self, Debug, Display, Formatter};
 
 #[doc(hidden)]

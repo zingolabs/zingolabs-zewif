@@ -1,7 +1,6 @@
-use anyhow::Result;
 use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*, test_cbor_roundtrip};
+use crate::test_cbor_roundtrip;
 
 /// The block height at which a Zcash transaction expires if not yet mined.
 ///
@@ -70,12 +69,6 @@ impl ExpiryHeight {
     /// ```
     pub fn as_option(self) -> Option<Self> {
         if self.0 == 0 { None } else { Some(self) }
-    }
-}
-
-impl Parse for ExpiryHeight {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(ExpiryHeight::from(parse!(p, u32, "expiry_height")?))
     }
 }
 

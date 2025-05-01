@@ -6,8 +6,7 @@ use std::{
 use anyhow::{Error, Result, anyhow, bail};
 use bc_envelope::prelude::*;
 
-use super::parser::prelude::*;
-use crate::{format_signed_zats_as_zec, parse, test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::{format_signed_zats_as_zec, test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// Number of zatoshis (zats) in 1 ZEC
 pub const COIN: u64 = 1_0000_0000;
@@ -59,13 +58,6 @@ pub const MAX_BALANCE: i64 = MAX_MONEY as i64;
 /// ```
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Amount(i64);
-
-impl Parse for Amount {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        let zat_balance = parse!(p, i64, "Zat balance")?;
-        Amount::try_from(zat_balance).map_err(|_| anyhow!("Invalid Zat balance: {}", zat_balance))
-    }
-}
 
 impl std::fmt::Debug for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

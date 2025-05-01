@@ -1,5 +1,5 @@
 use super::Data;
-use crate::{ parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip };
+use crate::{ test_cbor_roundtrip, test_envelope_roundtrip };
 use anyhow::{ Context, Result };
 use bc_envelope::prelude::*;
 use std::ops::{
@@ -63,11 +63,11 @@ impl Script {
 }
 
 /// Parses a Script from a binary data stream
-impl Parse for Script {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(Self(parse!(p, "Script")?))
-    }
-}
+//impl Parse for Script {
+//    fn parse(p: &mut Parser) -> Result<Self> {
+//        Ok(Self(parse!(p, "Script")?))
+//    }
+//}
 
 /// Debug formatting that includes script length and hex representation
 impl std::fmt::Debug for Script {

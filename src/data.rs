@@ -5,10 +5,6 @@ use std::ops::{
 use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
-
-use super::CompactSize;
-
 /// A variable-size byte array wrapper for safely handling binary data of arbitrary length.
 ///
 /// `Data` provides a flexible container for binary data that doesn't have a fixed size,
@@ -198,65 +194,6 @@ impl Data {
     }
 }
 
-impl Data {
-    /// Parses a fixed-length `Data` instance from a binary parser.
-    ///
-    /// This method is commonly used when the data length is known ahead of time
-    /// or has been read separately.
-    ///
-    /// # Errors
-    /// Returns an error if the parser doesn't have enough bytes remaining.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use zewif::Data;
-    /// # use zewif::parser::Parser;
-    /// # use zewif::parse;
-    /// # use anyhow::Result;
-    /// #
-    /// # fn example(parser: &mut Parser) -> Result<()> {
-    /// // Parse 5 bytes of data
-    /// let data = parse!(parser, data = 5, "fixed-length data")?;
-    /// assert_eq!(data.len(), 5);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn parse_len(parser: &mut Parser, len: usize) -> Result<Self> {
-        let bytes = parser.next(len).context("Parsing Data")?;
-        Ok(Self::from_slice(bytes))
-    }
-}
-
-impl Parse for Data {
-    /// Parses a variable-length `Data` instance from a binary parser.
-    ///
-    /// This implementation first reads a `CompactSize` value that indicates
-    /// the length of the data, then reads that many bytes.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - The parser doesn't have enough bytes remaining
-    /// - The CompactSize value cannot be parsed
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use zewif::Data;
-    /// # use zewif::parser::Parser;
-    /// # use zewif::parse;
-    /// # use anyhow::Result;
-    /// #
-    /// # fn example(parser: &mut Parser) -> Result<()> {
-    /// // Parse a data structure with length prefix
-    /// let data = parse!(parser, Data, "variable-length data")?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    fn parse(p: &mut Parser) -> Result<Self> {
-        let len = parse!(p, CompactSize, "Data length")?;
-        Self::parse_len(p, *len)
-    }
-}
-
 impl Default for Data {
     fn default() -> Self {
         Self::new()
@@ -439,18 +376,24 @@ impl TryFrom<Envelope> for Data {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Data {
-    fn random_with_size(size: usize) -> Self
-    where
-        Self: Sized,
-    {
-        bc_rand::random_data(size).into()
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+
+    use super::Data;
+
+    impl crate::RandomInstance for Data {
+        fn random_with_size(size: usize) -> Self
+        where
+            Self: Sized,
+        {
+            bc_rand::random_data(size).into()
+        }
+
+        fn random() -> Self {
+            Self::random_with_size(32)
+        }
     }
 
-    fn random() -> Self {
-        Self::random_with_size(32)
-    }
+    test_cbor_roundtrip!(Data);
+    test_envelope_roundtrip!(Data);
 }
-
-test_cbor_roundtrip!(Data);
-test_envelope_roundtrip!(Data);

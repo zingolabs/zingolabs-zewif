@@ -1,14 +1,13 @@
+use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
-use anyhow::{Result, Context};
 
-use crate::{parse, test_envelope_roundtrip, u256, MnemonicLanguage, NoQuotesDebugOption};
-use crate::parser::prelude::*;
+use crate::{MnemonicLanguage, NoQuotesDebugOption, SeedFingerprint, test_envelope_roundtrip};
 
 #[derive(Clone, PartialEq)]
 pub struct Bip39Mnemonic {
     mnemonic: String,
     language: Option<MnemonicLanguage>,
-    fingerprint: Option<u256>,
+    fingerprint: Option<SeedFingerprint>,
 }
 
 impl std::fmt::Debug for Bip39Mnemonic {
@@ -16,17 +15,24 @@ impl std::fmt::Debug for Bip39Mnemonic {
         f.debug_struct("MnemonicSeed")
             .field("language", &NoQuotesDebugOption(&self.language))
             .field("mnemonic", &self.mnemonic)
-            .field("fingerprint", &NoQuotesDebugOption(&self.fingerprint))
+            .field(
+                "fingerprint",
+                &NoQuotesDebugOption(&self.fingerprint.map(|f| f.to_hex())),
+            )
             .finish()
     }
 }
 
 impl Bip39Mnemonic {
     pub fn new(mnemonic: impl AsRef<str>, language: Option<MnemonicLanguage>) -> Self {
-        Self { mnemonic: mnemonic.as_ref().to_string(), language, fingerprint: None }
+        Self {
+            mnemonic: mnemonic.as_ref().to_string(),
+            language,
+            fingerprint: None,
+        }
     }
 
-    pub fn set_fingerprint(&mut self, fingerprint: u256) {
+    pub fn set_fingerprint(&mut self, fingerprint: SeedFingerprint) {
         self.fingerprint = Some(fingerprint);
     }
 
@@ -42,21 +48,12 @@ impl Bip39Mnemonic {
         self.language.as_ref()
     }
 
-    pub fn fingerprint(&self) -> Option<&u256> {
+    pub fn fingerprint(&self) -> Option<&SeedFingerprint> {
         self.fingerprint.as_ref()
     }
 
     pub fn set_language(&mut self, language: MnemonicLanguage) {
         self.language = Some(language);
-    }
-}
-
-impl Parse for Bip39Mnemonic {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        let language = Some(parse!(p, MnemonicLanguage, "language")?);
-        let mnemonic = parse!(p, String, "mnemonic")?;
-        let bip39_mnemonic = Self::new(mnemonic, language);
-        Ok(bip39_mnemonic)
     }
 }
 
@@ -73,10 +70,16 @@ impl TryFrom<Envelope> for Bip39Mnemonic {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("Bip39Mnemonic").context("Bip39Mnemonic")?;
+        envelope
+            .check_type_envelope("Bip39Mnemonic")
+            .context("Bip39Mnemonic")?;
         let mnemonic = envelope.extract_subject().context("mnemonic")?;
-        let language = envelope.try_optional_object_for_predicate("language").context("language")?;
-        let fingerprint = envelope.try_optional_object_for_predicate("fingerprint").context("fingerprint")?;
+        let language = envelope
+            .try_optional_object_for_predicate("language")
+            .context("language")?;
+        let fingerprint = envelope
+            .try_optional_object_for_predicate("fingerprint")
+            .context("fingerprint")?;
         Ok(Self {
             mnemonic,
             language,
@@ -91,7 +94,7 @@ impl crate::RandomInstance for Bip39Mnemonic {
         Self {
             mnemonic: String::random(),
             language: MnemonicLanguage::opt_random(),
-            fingerprint: u256::opt_random(),
+            fingerprint: SeedFingerprint::opt_random(),
         }
     }
 }

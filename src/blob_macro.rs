@@ -24,8 +24,6 @@
 #[macro_export]
 macro_rules! blob {
     ($name:ident, $size:expr, $doc:expr) => {
-        use anyhow::Context as _;
-
         #[doc = $doc]
         pub struct $name([u8; $size]);
 
@@ -152,21 +150,6 @@ macro_rules! blob {
         impl From<&[u8]> for $name {
             fn from(data: &[u8]) -> Self {
                 Self::from_slice(data).unwrap()
-            }
-        }
-
-        impl $crate::parser::Parse for $name {
-            /// Parses this type from a binary data stream.
-            ///
-            /// This implementation allows the type to be used with the `parse!` macro.
-            fn parse(parser: &mut $crate::parser::Parser) -> ::anyhow::Result<Self>
-            where
-                Self: Sized,
-            {
-                let data = parser
-                    .next($size)
-                    .with_context(|| format!("Parsing {}", stringify!($name)))?;
-                Ok(Self::from_slice(data)?)
             }
         }
 
