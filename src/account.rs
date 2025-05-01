@@ -3,10 +3,9 @@ use bc_envelope::prelude::*;
 use std::collections::HashSet;
 
 use crate::{
-    envelope_indexed_objects_for_predicate, test_envelope_roundtrip, Indexed, NoQuotesDebugOption
+    Address, Indexed, NoQuotesDebugOption, TxId, envelope_indexed_objects_for_predicate,
+    orchard::OrchardSentOutput, sapling::SaplingSentOutput, test_envelope_roundtrip,
 };
-
-use super::{Address, OrchardSentOutput, TxId, sapling::SaplingSentOutput};
 
 /// A logical grouping of addresses and transaction history within a wallet.
 ///

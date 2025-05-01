@@ -91,6 +91,7 @@ mod test_roundtrip_macros;
 mod_use!(test_utils);
 
 // Modules requiring qualified paths
+pub mod orchard;
 pub mod parser;
 pub mod sapling;
 pub mod transparent;
@@ -116,8 +117,6 @@ mod_use!(memo);
 mod_use!(mnemonic_language);
 mod_use!(network);
 mod_use!(non_hardened_child_index);
-mod_use!(orchard_sent_output);
-mod_use!(orchard_witness);
 mod_use!(phgr_proof);
 mod_use!(position);
 mod_use!(protocol_address);

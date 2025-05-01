@@ -1,6 +1,6 @@
 use crate::{test_envelope_roundtrip, u256};
 
-use super::IncrementalWitness;
+use crate::IncrementalWitness;
 
 /// The depth of the Orchard Merkle tree, set to 32 levels.
 ///
