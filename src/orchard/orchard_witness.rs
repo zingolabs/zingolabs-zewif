@@ -1,33 +1,110 @@
-use crate::{test_envelope_roundtrip, u256};
+use bc_envelope::prelude::*;
 
-use crate::IncrementalWitness;
+use crate::{IncrementalWitness, blob, blob_envelope};
 
-/// The depth of the Orchard Merkle tree, set to 32 levels.
+/// The depth of the Zcash Orchard note commitment tree.
+const ORCHARD_COMMITMENT_TREE_DEPTH: usize = 32;
+
+blob!(
+    MerkleHashOrchard,
+    32,
+    "A node in the Orchard note commitment tree."
+);
+impl Copy for MerkleHashOrchard {}
+
+blob_envelope!(MerkleHashOrchard);
+
+/// A cryptographic witness proving that a Orchard note commitment exists in the note commitment tree.
 ///
-/// This constant defines the maximum depth of the Orchard note commitment tree,
-/// which allows for 2^32 (over 4 billion) note commitments to be included.
-const ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH: usize = 32;
-
-/// A type alias for the Sinsemilla hash used in Orchard Merkle trees.
+/// `OrchardWitness` is a specialized form of incremental Merkle tree witness for the
+/// Orchard protocol. It proves that a specific note commitment is included in the
+/// global Orchard note commitment tree, which is necessary when spending a note.
 ///
-/// Sinsemilla hashes are cryptographic hash functions used for note commitments
-/// and in the Merkle tree structure for the Orchard protocol. They provide efficient
-/// hashing with homomorphic properties used in zero-knowledge proofs.
-pub type SinsemillaHash = u256;
-
-/// A cryptographic witness proving that an Orchard note commitment exists in the note commitment tree.
+/// # Zcash Concept Relation
+/// In Zcash's Orchard protocol:
 ///
-/// This type specializes the generic `IncrementalWitness` for the Orchard protocol parameters.
-pub type OrchardWitness = IncrementalWitness<ORCHARD_INCREMENTAL_MERKLE_TREE_DEPTH, SinsemillaHash>;
+/// - **Note Commitment Tree**: A Merkle tree containing all Orchard note commitments
+/// - **Merkle Path**: The path from a leaf (note commitment) to the root of the tree
+/// - **Witness**: The authentication path proving a leaf exists in the tree
+/// - **Anchors**: Root hashes of the note commitment tree at specific blockchain heights
+///
+/// When spending a Orchard note, a zero-knowledge proof must demonstrate that the
+/// note's commitment exists in the tree at a specific anchor (root hash), without
+/// revealing which specific commitment is being spent. The witness provides the
+/// necessary path information to create this proof.
+///
+/// # Data Preservation
+/// During wallet migration, complete witness data must be preserved for all unspent
+/// notes. This includes:
+///
+/// - The authentication path (sequence of hashes forming the Merkle path)
+/// - The position of the note commitment in the tree
+/// - The tree depth used (32 for Orchard)
+///
+/// Without this witness data, unspent notes cannot be spent as it would be impossible
+/// to prove their inclusion in the note commitment tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrchardWitness(IncrementalWitness<ORCHARD_COMMITMENT_TREE_DEPTH, MerkleHashOrchard>);
 
-#[cfg(test)]
-impl crate::RandomInstance for IncrementalWitness<32, u256> {
-    fn random() -> Self {
-        let tree = crate::IncrementalMerkleTree::random();
-        let filled: Vec<SinsemillaHash> = (0..10).map(|_| SinsemillaHash::random()).collect();
-        let cursor = crate::IncrementalMerkleTree::opt_random();
-        Self::with_fields(tree, filled, cursor)
+impl From<OrchardWitness> for Envelope {
+    fn from(value: OrchardWitness) -> Self {
+        Envelope::new(*value.0.note_commitment())
+            .add_type("OrchardWitness")
+            .add_assertion("note_position", value.0.note_position())
+            .add_assertion("merkle_path", value.0.merkle_path().to_vec())
+            .add_assertion("anchor", *value.0.anchor())
+            .add_assertion("anchor_tree_size", value.0.anchor_tree_size())
+            .add_assertion("anchor_frontier", value.0.anchor_frontier().to_vec())
     }
 }
 
-test_envelope_roundtrip!(OrchardWitness);
+impl TryFrom<Envelope> for OrchardWitness {
+    type Error = anyhow::Error;
+
+    fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
+        envelope
+            .check_type_envelope("OrchardWitness")
+            .context("OrchardWitness")?;
+        let note_commitment = envelope.try_as().context("note_commitment")?;
+        let note_position = envelope
+            .extract_object_for_predicate("note_position")
+            .context("note_position")?;
+        let merkle_path = envelope
+            .extract_object_for_predicate("merkle_path")
+            .context("merkle_path")?;
+        let anchor = envelope
+            .extract_object_for_predicate("anchor")
+            .context("anchor")?;
+        let anchor_tree_size = envelope
+            .extract_object_for_predicate("anchor_tree_size")
+            .context("anchor_tree_size")?;
+        let anchor_frontier = envelope
+            .extract_object_for_predicate("anchor_frontier")
+            .context("anchor_frontier")?;
+        Ok(Self(IncrementalWitness::from_parts(
+            note_commitment,
+            note_position,
+            merkle_path,
+            anchor,
+            anchor_tree_size,
+            anchor_frontier
+        )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{IncrementalWitness, RandomInstance, test_envelope_roundtrip};
+
+    use super::OrchardWitness;
+
+    impl RandomInstance for OrchardWitness {
+        fn random() -> Self {
+            Self(IncrementalWitness::random())
+        }
+    }
+
+    test_envelope_roundtrip!(OrchardWitness);
+}
+
+

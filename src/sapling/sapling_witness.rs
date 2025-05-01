@@ -1,22 +1,18 @@
-use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use crate::test_envelope_roundtrip;
+use crate::{IncrementalWitness, blob, blob_envelope};
 
-use super::super::{IncrementalWitness, u256};
+/// The depth of the Zcash Sapling note commitment tree.
+const SAPLING_COMMITMENT_TREE_DEPTH: usize = 32;
 
-/// The depth of the Sapling Merkle tree, set to 32 levels.
-///
-/// This constant defines the maximum depth of the Sapling note commitment tree,
-/// which allows for 2^32 (over 4 billion) note commitments to be included.
-const SAPLING_INCREMENTAL_MERKLE_TREE_DEPTH: usize = 32;
+blob!(
+    MerkleHashSapling,
+    32,
+    "A node in the Sapling note commitment tree."
+);
+impl Copy for MerkleHashSapling {}
 
-/// A type alias for the Pedersen hash used in Sapling Merkle trees.
-///
-/// Pedersen hashes are used for note commitments and in the Merkle tree structure
-/// for the Sapling protocol. They provide cryptographic binding while maintaining
-/// homomorphic properties useful for zero-knowledge proofs.
-pub type PedersenHash = u256;
+blob_envelope!(MerkleHashSapling);
 
 /// A cryptographic witness proving that a Sapling note commitment exists in the note commitment tree.
 ///
@@ -47,19 +43,18 @@ pub type PedersenHash = u256;
 ///
 /// Without this witness data, unspent notes cannot be spent as it would be impossible
 /// to prove their inclusion in the note commitment tree.
-///
-/// # Implementation Details
-/// This type is an alias for `IncrementalWitness<32, PedersenHash>`, representing a
-/// witness for a Merkle tree with 32 levels using Pedersen hashes as the hash function.
-/// The witness supports incremental updates as new notes are added to the tree.
-pub type SaplingWitness = IncrementalWitness<SAPLING_INCREMENTAL_MERKLE_TREE_DEPTH, PedersenHash>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SaplingWitness(IncrementalWitness<SAPLING_COMMITMENT_TREE_DEPTH, MerkleHashSapling>);
 
 impl From<SaplingWitness> for Envelope {
     fn from(value: SaplingWitness) -> Self {
-        Envelope::new(value.tree().clone())
+        Envelope::new(*value.0.note_commitment())
             .add_type("SaplingWitness")
-            .add_assertion("filled", value.filled().clone())
-            .add_optional_assertion("cursor", value.cursor().clone())
+            .add_assertion("note_position", value.0.note_position())
+            .add_assertion("merkle_path", value.0.merkle_path().to_vec())
+            .add_assertion("anchor", *value.0.anchor())
+            .add_assertion("anchor_tree_size", value.0.anchor_tree_size())
+            .add_assertion("anchor_frontier", value.0.anchor_frontier().to_vec())
     }
 }
 
@@ -67,12 +62,47 @@ impl TryFrom<Envelope> for SaplingWitness {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("SaplingWitness").context("SaplingWitness")?;
-        let tree = envelope.try_as().context("tree")?;
-        let filled = envelope.extract_object_for_predicate("filled").context("filled")?;
-        let cursor = envelope.try_optional_object_for_predicate("cursor").context("cursor")?;
-        Ok(Self::with_fields(tree, filled, cursor))
+        envelope
+            .check_type_envelope("SaplingWitness")
+            .context("SaplingWitness")?;
+        let note_commitment = envelope.try_as().context("note_commitment")?;
+        let note_position = envelope
+            .extract_object_for_predicate("note_position")
+            .context("note_position")?;
+        let merkle_path = envelope
+            .extract_object_for_predicate("merkle_path")
+            .context("merkle_path")?;
+        let anchor = envelope
+            .extract_object_for_predicate("anchor")
+            .context("anchor")?;
+        let anchor_tree_size = envelope
+            .extract_object_for_predicate("anchor_tree_size")
+            .context("anchor_tree_size")?;
+        let anchor_frontier = envelope
+            .extract_object_for_predicate("anchor_frontier")
+            .context("anchor_frontier")?;
+        Ok(Self(IncrementalWitness::from_parts(
+            note_commitment,
+            note_position,
+            merkle_path,
+            anchor,
+            anchor_tree_size,
+            anchor_frontier,
+        )))
     }
 }
 
-test_envelope_roundtrip!(SaplingWitness);
+#[cfg(test)]
+mod tests {
+    use crate::{IncrementalWitness, RandomInstance, test_envelope_roundtrip};
+
+    use super::SaplingWitness;
+
+    impl RandomInstance for SaplingWitness {
+        fn random() -> Self {
+            Self(IncrementalWitness::random())
+        }
+    }
+
+    test_envelope_roundtrip!(SaplingWitness);
+}

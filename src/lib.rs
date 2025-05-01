@@ -107,7 +107,6 @@ mod_use!(compact_size);
 mod_use!(data);
 mod_use!(derivation_info);
 mod_use!(expiry_height);
-mod_use!(incremental_merkle_tree);
 mod_use!(incremental_witness);
 mod_use!(indexed);
 mod_use!(int_id);
