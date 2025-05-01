@@ -57,11 +57,10 @@ pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
     Transparent(transparent::Address),
 
-    /// A shielded address (Z-address). This can include Sapling, Sprout
+    /// A Sapling address (Z-address).
     Sapling(Box<sapling::Address>),
 
     /// A unified address (U-address) that contains multiple receiver types.
-    /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
     Unified(Box<UnifiedAddress>),
 }
 
