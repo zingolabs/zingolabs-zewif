@@ -9,8 +9,7 @@
 //!
 //! * **Complete Wallet Data Model**: Represents all aspects of a Zcash wallet including
 //!   accounts, addresses, transactions, and keys
-//! * **Multi-Protocol Support**: Handles all Zcash protocols (transparent, Sprout, Sapling, and Orchard)
-//! * **Binary Parsing Toolkit**: Provides tools for parsing and serializing binary wallet data
+//! * **Multi-Protocol Support**: Handles the Transparent, Sapling, and Orchard Zcash protocols.
 //! * **Type-Safe Representation**: Uses Rust's type system to ensure correct handling of Zcash concepts
 //! * **Extensible Metadata**: Supports custom metadata through an attachments system
 //!
@@ -26,12 +25,11 @@
 //!
 //! ## Protocol Support
 //!
-//! ZeWIF handles all Zcash protocol versions:
+//! ZeWIF handles the Zcash protocol versions:
 //!
 //! - **Transparent**: Bitcoin-compatible public transactions ([`TransparentAddress`], [`TxIn`], [`TxOut`])
-//! - **Sprout**: Original shielded protocol ([`JoinSplitDescription`], [`SproutWitness`])
-//! - **Sapling**: Improved shielded protocol ([`sapling`] module, [`sapling::SaplingOutputDescription`], etc.)
-//! - **Orchard**: Latest shielded protocol ([`OrchardActionDescription`], [`OrchardSentOutput`])
+//! - **Sapling**: Improved shielded protocol ([`sapling`] module, [`sapling::SaplingSentOutput`], etc.)
+//! - **Orchard**: Latest shielded protocol ([`orchard`] module, [`orchard::OrchardSentOutput`], etc.)
 //!
 //! ## Integration Path
 //!
@@ -125,7 +123,6 @@ mod_use!(script);
 mod_use!(seconds_since_epoch);
 mod_use!(seed);
 mod_use!(seed_material);
-mod_use!(sprout_witness);
 mod_use!(string_utils);
 mod_use!(transaction_status);
 mod_use!(transaction);
