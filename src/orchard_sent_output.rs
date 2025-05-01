@@ -1,8 +1,7 @@
 use anyhow::Context;
 use bc_envelope::prelude::*;
-use crate::{test_envelope_roundtrip, Indexed};
 
-use super::{Amount, Blob};
+use crate::{Amount, Blob, Indexed, Memo};
 
 /// Represents a sent output in an Orchard shielded transaction within a Zcash wallet.
 ///
@@ -45,13 +44,16 @@ use super::{Amount, Blob};
 /// let psi = Blob::default();
 /// let rcm = Blob::default();
 ///
-/// let sent_output = OrchardSentOutput::new(
+/// let sent_output = OrchardSentOutput::from_parts(
+///     0,
+///     "".to_string(),
 ///     diversifier,
 ///     recipient_pk,
 ///     value,
 ///     rho,
 ///     psi,
-///     rcm
+///     rcm,
+///     None
 /// );
 ///
 /// // Check the value was set correctly
@@ -64,6 +66,15 @@ use super::{Amount, Blob};
 pub struct OrchardSentOutput {
     /// The index of the sent output in the transaction.
     index: usize,
+
+    /// The string representation of the address to which the output was sent.
+    ///
+    /// This should be a Unified address with an Orchard receiver. We preserve the original address
+    /// string because in the case of Unified addresses, it is not otherwise possible to
+    /// reconstruct the data for receivers other than the Orchard receiver, and as a consequence
+    /// the recipient address in a restored wallet would appear different than in the source
+    /// wallet.
+    recipient_address: String,
 
     /// The diversifier used in deriving the recipient's shielded address.
     ///
@@ -106,6 +117,9 @@ pub struct OrchardSentOutput {
     /// the note's contents on the blockchain. It is stored to enable the wallet to
     /// regenerate the commitment for proving payment details.
     rcm: Blob<32>,
+
+    /// The memo attached to this output, if any.
+    memo: Option<Memo>,
 }
 
 impl Indexed for OrchardSentOutput {
@@ -119,7 +133,7 @@ impl Indexed for OrchardSentOutput {
 }
 
 impl OrchardSentOutput {
-    /// Creates a new `OrchardSentOutput` with the specified parameters.
+    /// Creates a new `OrchardSentOutput` from its constituent parts.
     ///
     /// This constructor creates an Orchard sent output with all required components
     /// for transaction reconstruction and selective disclosure.
@@ -147,34 +161,58 @@ impl OrchardSentOutput {
     /// let psi = Blob::default();
     /// let rcm = Blob::default();
     ///
-    /// let sent_output = OrchardSentOutput::new(
+    /// let sent_output = OrchardSentOutput::from_parts(
+    ///     0,
+    ///     "".to_string(),
     ///     diversifier,
     ///     recipient_pk,
     ///     value,
     ///     rho,
     ///     psi,
-    ///     rcm
+    ///     rcm,
+    ///     None
     /// );
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(
+    pub fn from_parts(
+        index: usize,
+        recipient_address: String,
         diversifier: Blob<11>,
         receipient_public_key: Blob<32>,
         value: Amount,
         rho: Blob<32>,
         psi: Blob<32>,
         rcm: Blob<32>,
+        memo: Option<Memo>,
     ) -> Self {
         Self {
-            index: 0,
+            index,
+            recipient_address,
             diversifier,
             receipient_public_key,
             value,
             rho,
             psi,
             rcm,
+            memo,
         }
+    }
+
+    /// Returns the string representation of the address used in construction of the output.
+    ///
+    /// This will be a Unified address with an Orchard receiver. We preserve the original address
+    /// string because in the case of Unified addresses, it is not otherwise possible to
+    /// reconstruct the data for receivers other than the Orchard receiver, and as a consequence
+    /// the recipient address in a restored wallet would appear different than in the source
+    /// wallet.
+    pub fn recipient_address(&self) -> &str {
+        &self.recipient_address
+    }
+
+    /// Sets the string representation of the address used in construction of the output.
+    pub fn set_recipient_address(&mut self, recipient_address: String) {
+        self.recipient_address = recipient_address;
     }
 
     /// Returns a reference to the diversifier used in the recipient's address derivation.
@@ -193,9 +231,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let diversifier = Blob::<11>::default();
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     diversifier.clone(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), diversifier.clone(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let div = sent_output.diversifier();
     /// assert_eq!(div, &diversifier);
@@ -222,9 +260,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let pk = Blob::default();
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), pk.clone(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), pk.clone(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let recipient_pk = sent_output.receipient_public_key();
     /// # Ok(())
@@ -249,9 +287,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let value = Amount::from_u64(15_000_000)?;
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), value,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), value,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let amount = sent_output.value();
     /// let zats: i64 = amount.into();
@@ -279,9 +317,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let rho = Blob::default();
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     rho.clone(), Blob::default(), Blob::default());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     rho.clone(), Blob::default(), Blob::default(), None);
     /// #
     /// let r = sent_output.rho();
     /// # Ok(())
@@ -307,9 +345,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let psi = Blob::default();
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), psi.clone(), Blob::default());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), psi.clone(), Blob::default(), None);
     /// #
     /// let p = sent_output.psi();
     /// # Ok(())
@@ -336,9 +374,9 @@ impl OrchardSentOutput {
     /// #
     /// # fn example() -> Result<()> {
     /// # let rcm = Blob::default();
-    /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), rcm.clone());
+    /// # let sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), rcm.clone(), None);
     /// #
     /// let r = sent_output.rcm();
     /// # Ok(())
@@ -359,9 +397,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let new_diversifier = Blob::<11>::default();
     /// sent_output.set_diversifier(new_diversifier);
@@ -383,9 +421,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let pk = Blob::default();
     /// sent_output.set_receipient_public_key(pk);
@@ -407,9 +445,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let amount = Amount::from_u64(25_000_000)?; // 0.25 ZEC
     /// sent_output.set_value(amount);
@@ -431,9 +469,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let rho = Blob::default();
     /// sent_output.set_rho(rho);
@@ -455,9 +493,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let psi = Blob::default();
     /// sent_output.set_psi(psi);
@@ -479,9 +517,9 @@ impl OrchardSentOutput {
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
-    /// #     Blob::default(), Blob::default(), Blob::default());
+    /// # let mut sent_output = OrchardSentOutput::from_parts(
+    /// #     0, "".to_string(), Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default(), None);
     /// #
     /// let rcm = Blob::default();
     /// sent_output.set_rcm(rcm);
@@ -491,18 +529,30 @@ impl OrchardSentOutput {
     pub fn set_rcm(&mut self, rcm: Blob<32>) {
         self.rcm = rcm;
     }
+
+    /// Returns the memo associated with the output, if known.
+    pub fn memo(&self) -> Option<&Memo> {
+        self.memo.as_ref()
+    }
+
+    /// Sets the memo associated with the output.
+    pub fn set_memo(&mut self, memo: Option<Memo>) {
+        self.memo = memo;
+    }
 }
 
 impl From<OrchardSentOutput> for Envelope {
     fn from(value: OrchardSentOutput) -> Self {
         Envelope::new(value.index)
             .add_type("OrchardSentOutput")
+            .add_assertion("recipient_address", value.recipient_address)
             .add_assertion("diversifier", value.diversifier)
             .add_assertion("receipient_public_key", value.receipient_public_key)
             .add_assertion("value", value.value)
             .add_assertion("rho", value.rho)
             .add_assertion("psi", value.psi)
             .add_assertion("rcm", value.rcm)
+            .add_optional_assertion("memo", value.memo)
     }
 }
 
@@ -510,40 +560,70 @@ impl TryFrom<Envelope> for OrchardSentOutput {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("OrchardSentOutput").context("OrchardSentOutput")?;
+        envelope
+            .check_type_envelope("OrchardSentOutput")
+            .context("OrchardSentOutput")?;
         let index = envelope.extract_subject().context("index")?;
-        let diversifier = envelope.extract_object_for_predicate("diversifier").context("diversifier")?;
-        let receipient_public_key = envelope.extract_object_for_predicate("receipient_public_key").context("receipient_public_key")?;
-        let value = envelope.extract_object_for_predicate("value").context("value")?;
-        let rho = envelope.extract_object_for_predicate("rho").context("rho")?;
-        let psi = envelope.extract_object_for_predicate("psi").context("psi")?;
-        let rcm = envelope.extract_object_for_predicate("rcm").context("rcm")?;
+        let recipient_address = envelope
+            .extract_object_for_predicate("recipient_address")
+            .context("recipient_address")?;
+        let diversifier = envelope
+            .extract_object_for_predicate("diversifier")
+            .context("diversifier")?;
+        let receipient_public_key = envelope
+            .extract_object_for_predicate("receipient_public_key")
+            .context("receipient_public_key")?;
+        let value = envelope
+            .extract_object_for_predicate("value")
+            .context("value")?;
+        let rho = envelope
+            .extract_object_for_predicate("rho")
+            .context("rho")?;
+        let psi = envelope
+            .extract_object_for_predicate("psi")
+            .context("psi")?;
+        let rcm = envelope
+            .extract_object_for_predicate("rcm")
+            .context("rcm")?;
+        let memo = envelope
+            .extract_optional_object_for_predicate("memo")
+            .context("memo")?;
 
         Ok(OrchardSentOutput {
             index,
+            recipient_address,
             diversifier,
             receipient_public_key,
             value,
             rho,
             psi,
             rcm,
+            memo,
         })
     }
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for OrchardSentOutput {
-    fn random() -> Self {
-        Self {
-            index: 0,
-            diversifier: Blob::random(),
-            receipient_public_key: Blob::random(),
-            value: Amount::random(),
-            rho: Blob::random(),
-            psi: Blob::random(),
-            rcm: Blob::random(),
+mod tests {
+    use crate::{Amount, Blob, Memo, UnifiedAddress, test_envelope_roundtrip};
+
+    use super::OrchardSentOutput;
+
+    impl crate::RandomInstance for OrchardSentOutput {
+        fn random() -> Self {
+            Self {
+                index: 0,
+                recipient_address: UnifiedAddress::random().address().to_string(),
+                diversifier: Blob::random(),
+                receipient_public_key: Blob::random(),
+                value: Amount::random(),
+                rho: Blob::random(),
+                psi: Blob::random(),
+                rcm: Blob::random(),
+                memo: Some(Memo::random()),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(OrchardSentOutput);
+    test_envelope_roundtrip!(OrchardSentOutput);
+}

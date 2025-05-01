@@ -193,22 +193,21 @@ impl TryFrom<Envelope> for ProtocolAddress {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for ProtocolAddress {
-    fn random() -> Self {
-        let mut rng = rand::thread_rng();
-        let choice = rand::Rng::gen_range(&mut rng, 0..3);
-        match choice {
-            0 => ProtocolAddress::Transparent(transparent::Address::random()),
-            1 => ProtocolAddress::Sapling(Box::new(sapling::Address::random())),
-            _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::ProtocolAddress;
-    use crate::test_envelope_roundtrip;
+    use crate::{UnifiedAddress, sapling, test_envelope_roundtrip, transparent};
+
+    impl crate::RandomInstance for ProtocolAddress {
+        fn random() -> Self {
+            let mut rng = rand::thread_rng();
+            let choice = rand::Rng::gen_range(&mut rng, 0..3);
+            match choice {
+                0 => ProtocolAddress::Transparent(transparent::Address::random()),
+                1 => ProtocolAddress::Sapling(Box::new(sapling::Address::random())),
+                _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
+            }
+        }
+    }
 
     test_envelope_roundtrip!(ProtocolAddress);
 }
