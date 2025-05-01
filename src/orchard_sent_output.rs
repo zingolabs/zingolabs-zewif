@@ -2,7 +2,7 @@ use anyhow::Context;
 use bc_envelope::prelude::*;
 use crate::{test_envelope_roundtrip, Indexed};
 
-use super::{Amount, Blob, u256};
+use super::{Amount, Blob};
 
 /// Represents a sent output in an Orchard shielded transaction within a Zcash wallet.
 ///
@@ -34,16 +34,16 @@ use super::{Amount, Blob, u256};
 ///
 /// # Examples
 /// ```
-/// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+/// # use zewif::{OrchardSentOutput, Blob, Amount};
 /// # use anyhow::Result;
 /// # fn example() -> Result<()> {
 /// // Create a new Orchard sent output with all required components
 /// let diversifier = Blob::<11>::default();
-/// let recipient_pk = u256::default();
+/// let recipient_pk = Blob::default();
 /// let value = Amount::from_u64(10_000_000)?; // 0.1 ZEC
-/// let rho = u256::default();
-/// let psi = u256::default();
-/// let rcm = u256::default();
+/// let rho = Blob::default();
+/// let psi = Blob::default();
+/// let rcm = Blob::default();
 ///
 /// let sent_output = OrchardSentOutput::new(
 ///     diversifier,
@@ -77,7 +77,7 @@ pub struct OrchardSentOutput {
     /// This 32-byte value represents a point on the Pallas curve, distinct from Sapling's
     /// Jubjub curve. It is included in the note plaintext and necessary for verifying
     /// the recipient in proofs or audits.
-    receipient_public_key: u256,
+    receipient_public_key: Blob<32>,
 
     /// The value of ZEC sent in this output, in zatoshis (1 ZEC = 10^8 zatoshis).
     ///
@@ -91,21 +91,21 @@ pub struct OrchardSentOutput {
     /// This 32-byte value (an element of the Pallas curve's field F_q) is unique to Orchard,
     /// enhancing privacy by contributing to the note's uniqueness. It is stored for
     /// reconstructing the note during selective disclosure.
-    rho: u256,
+    rho: Blob<32>,
 
     /// Another randomness element used in Orchard's note construction.
     ///
     /// This 32-byte value (also an element of F_q) further strengthens privacy in Orchard
     /// transactions. It is part of the note plaintext and required for generating proofs
     /// that validate the sent output.
-    psi: u256,
+    psi: Blob<32>,
 
     /// The random commitment material used in the note commitment.
     ///
     /// This 32-byte value (256-bit scalar) serves a similar role to Sapling's rcm, masking
     /// the note's contents on the blockchain. It is stored to enable the wallet to
     /// regenerate the commitment for proving payment details.
-    rcm: u256,
+    rcm: Blob<32>,
 }
 
 impl Indexed for OrchardSentOutput {
@@ -137,15 +137,15 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// # fn example() -> Result<()> {
     /// let diversifier = Blob::<11>::default();
-    /// let recipient_pk = u256::default();
+    /// let recipient_pk = Blob::default();
     /// let value = Amount::from_u64(5_000_000)?; // 0.05 ZEC
-    /// let rho = u256::default();
-    /// let psi = u256::default();
-    /// let rcm = u256::default();
+    /// let rho = Blob::default();
+    /// let psi = Blob::default();
+    /// let rcm = Blob::default();
     ///
     /// let sent_output = OrchardSentOutput::new(
     ///     diversifier,
@@ -160,11 +160,11 @@ impl OrchardSentOutput {
     /// ```
     pub fn new(
         diversifier: Blob<11>,
-        receipient_public_key: u256,
+        receipient_public_key: Blob<32>,
         value: Amount,
-        rho: u256,
-        psi: u256,
-        rcm: u256,
+        rho: Blob<32>,
+        psi: Blob<32>,
+        rcm: Blob<32>,
     ) -> Self {
         Self {
             index: 0,
@@ -188,14 +188,14 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let diversifier = Blob::<11>::default();
     /// # let sent_output = OrchardSentOutput::new(
-    /// #     diversifier.clone(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     diversifier.clone(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
     /// let div = sent_output.diversifier();
     /// assert_eq!(div, &diversifier);
@@ -213,24 +213,24 @@ impl OrchardSentOutput {
     /// that the sender's wallet must store to enable selective disclosure.
     ///
     /// # Returns
-    /// A reference to the recipient's public key as a `u256`.
+    /// A reference to the recipient's public key as a `Blob<32>`.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let pk = u256::default();
+    /// # let pk = Blob::default();
     /// # let sent_output = OrchardSentOutput::new(
     /// #     Blob::<11>::default(), pk.clone(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
     /// let recipient_pk = sent_output.receipient_public_key();
     /// # Ok(())
     /// # }
     /// ```
-    pub fn receipient_public_key(&self) -> &u256 {
+    pub fn receipient_public_key(&self) -> &Blob<32> {
         &self.receipient_public_key
     }
 
@@ -244,14 +244,14 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let value = Amount::from_u64(15_000_000)?;
     /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), value,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), value,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
     /// let amount = sent_output.value();
     /// let zats: i64 = amount.into();
@@ -270,24 +270,24 @@ impl OrchardSentOutput {
     /// the sender to enable selective disclosure of transaction details.
     ///
     /// # Returns
-    /// A reference to the `rho` value as a `u256`.
+    /// A reference to the `rho` value as a `Blob<32>`.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let rho = u256::default();
+    /// # let rho = Blob::default();
     /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     rho.clone(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     rho.clone(), Blob::default(), Blob::default());
     /// #
     /// let r = sent_output.rho();
     /// # Ok(())
     /// # }
     /// ```
-    pub fn rho(&self) -> &u256 {
+    pub fn rho(&self) -> &Blob<32> {
         &self.rho
     }
 
@@ -298,24 +298,24 @@ impl OrchardSentOutput {
     /// and is part of Orchard's enhanced privacy design.
     ///
     /// # Returns
-    /// A reference to the `psi` value as a `u256`.
+    /// A reference to the `psi` value as a `Blob<32>`.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let psi = u256::default();
+    /// # let psi = Blob::default();
     /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), psi.clone(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), psi.clone(), Blob::default());
     /// #
     /// let p = sent_output.psi();
     /// # Ok(())
     /// # }
     /// ```
-    pub fn psi(&self) -> &u256 {
+    pub fn psi(&self) -> &Blob<32> {
         &self.psi
     }
 
@@ -327,24 +327,24 @@ impl OrchardSentOutput {
     /// or payment proofs.
     ///
     /// # Returns
-    /// A reference to the random commitment material as a `u256`.
+    /// A reference to the random commitment material as a `Blob<32>`.
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
-    /// # let rcm = u256::default();
+    /// # let rcm = Blob::default();
     /// # let sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), rcm.clone());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), rcm.clone());
     /// #
     /// let r = sent_output.rcm();
     /// # Ok(())
     /// # }
     /// ```
-    pub fn rcm(&self) -> &u256 {
+    pub fn rcm(&self) -> &Blob<32> {
         &self.rcm
     }
 
@@ -355,13 +355,13 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
     /// let new_diversifier = Blob::<11>::default();
     /// sent_output.set_diversifier(new_diversifier);
@@ -379,20 +379,20 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
-    /// let pk = u256::default();
+    /// let pk = Blob::default();
     /// sent_output.set_receipient_public_key(pk);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_receipient_public_key(&mut self, receipient_public_key: u256) {
+    pub fn set_receipient_public_key(&mut self, receipient_public_key: Blob<32>) {
         self.receipient_public_key = receipient_public_key;
     }
 
@@ -403,13 +403,13 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
     /// let amount = Amount::from_u64(25_000_000)?; // 0.25 ZEC
     /// sent_output.set_value(amount);
@@ -427,20 +427,20 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
-    /// let rho = u256::default();
+    /// let rho = Blob::default();
     /// sent_output.set_rho(rho);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_rho(&mut self, rho: u256) {
+    pub fn set_rho(&mut self, rho: Blob<32>) {
         self.rho = rho;
     }
 
@@ -451,20 +451,20 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
-    /// let psi = u256::default();
+    /// let psi = Blob::default();
     /// sent_output.set_psi(psi);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_psi(&mut self, psi: u256) {
+    pub fn set_psi(&mut self, psi: Blob<32>) {
         self.psi = psi;
     }
 
@@ -475,20 +475,20 @@ impl OrchardSentOutput {
     ///
     /// # Examples
     /// ```
-    /// # use zewif::{OrchardSentOutput, Blob, u256, Amount};
+    /// # use zewif::{OrchardSentOutput, Blob, Amount};
     /// # use anyhow::Result;
     /// #
     /// # fn example() -> Result<()> {
     /// # let mut sent_output = OrchardSentOutput::new(
-    /// #     Blob::<11>::default(), u256::default(), Amount::from_u64(1000)?,
-    /// #     u256::default(), u256::default(), u256::default());
+    /// #     Blob::<11>::default(), Blob::default(), Amount::from_u64(1000)?,
+    /// #     Blob::default(), Blob::default(), Blob::default());
     /// #
-    /// let rcm = u256::default();
+    /// let rcm = Blob::default();
     /// sent_output.set_rcm(rcm);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_rcm(&mut self, rcm: u256) {
+    pub fn set_rcm(&mut self, rcm: Blob<32>) {
         self.rcm = rcm;
     }
 }
@@ -537,11 +537,11 @@ impl crate::RandomInstance for OrchardSentOutput {
         Self {
             index: 0,
             diversifier: Blob::random(),
-            receipient_public_key: u256::random(),
+            receipient_public_key: Blob::random(),
             value: Amount::random(),
-            rho: u256::random(),
-            psi: u256::random(),
-            rcm: u256::random(),
+            rho: Blob::random(),
+            psi: Blob::random(),
+            rcm: Blob::random(),
         }
     }
 }
