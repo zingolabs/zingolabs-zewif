@@ -175,6 +175,7 @@ impl OrchardSentOutput {
     /// # Ok(())
     /// # }
     /// ```
+    #[allow(clippy::too_many_arguments)]
     pub fn from_parts(
         index: usize,
         recipient_address: String,

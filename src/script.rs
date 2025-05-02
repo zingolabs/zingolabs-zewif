@@ -62,13 +62,6 @@ impl Script {
     }
 }
 
-/// Parses a Script from a binary data stream
-//impl Parse for Script {
-//    fn parse(p: &mut Parser) -> Result<Self> {
-//        Ok(Self(parse!(p, "Script")?))
-//    }
-//}
-
 /// Debug formatting that includes script length and hex representation
 impl std::fmt::Debug for Script {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

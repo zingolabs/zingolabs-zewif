@@ -112,6 +112,7 @@ macro_rules! blob {
         }
 
         impl Clone for $name {
+            #[allow(clippy::non_canonical_clone_impl)]
             fn clone(&self) -> Self {
                 Self(self.0.clone())
             }
