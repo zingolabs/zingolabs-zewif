@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::{
     Address, Indexed, NoQuotesDebugOption, TxId, envelope_indexed_objects_for_predicate,
-    orchard::OrchardSentOutput, sapling::SaplingSentOutput, test_envelope_roundtrip,
+    orchard::OrchardSentOutput, sapling::SaplingSentOutput,
 };
 
 /// A logical grouping of addresses and transaction history within a wallet.
@@ -240,21 +240,31 @@ impl TryFrom<Envelope> for Account {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Account {
-    fn random() -> Self {
-        use crate::SetIndexes;
+mod tests {
+    use std::collections::HashSet;
 
-        Self {
-            index: 0,
-            name: String::random(),
-            zip32_account_id: u32::opt_random(),
-            addresses: Vec::random().set_indexes(),
-            relevant_transactions: HashSet::random(),
-            sapling_sent_outputs: Vec::random().set_indexes(),
-            orchard_sent_outputs: Vec::random().set_indexes(),
-            attachments: Attachments::random(),
+    use bc_envelope::Attachments;
+
+    use crate::test_envelope_roundtrip;
+
+    use super::Account;
+
+    impl crate::RandomInstance for Account {
+        fn random() -> Self {
+            use crate::SetIndexes;
+
+            Self {
+                index: 0,
+                name: String::random(),
+                zip32_account_id: u32::opt_random(),
+                addresses: Vec::random().set_indexes(),
+                relevant_transactions: HashSet::random(),
+                sapling_sent_outputs: Vec::random().set_indexes(),
+                orchard_sent_outputs: Vec::random().set_indexes(),
+                attachments: Attachments::random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(Account);
+    test_envelope_roundtrip!(Account);
+}

@@ -1,7 +1,5 @@
 use bc_envelope::prelude::*;
 
-use crate::test_cbor_roundtrip;
-
 /// The block height at which a Zcash transaction expires if not yet mined.
 ///
 /// `ExpiryHeight` represents a consensus rule in Zcash that allows transactions to
@@ -101,12 +99,18 @@ impl TryFrom<CBOR> for ExpiryHeight {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for ExpiryHeight {
-    fn random() -> Self {
-        let mut rng = rand::thread_rng();
-        let expiry_height = rand::Rng::gen_range(&mut rng, 0..=u32::MAX);
-        ExpiryHeight::from(expiry_height)
-    }
-}
+mod tests {
+    use crate::test_cbor_roundtrip;
 
-test_cbor_roundtrip!(ExpiryHeight);
+    use super::ExpiryHeight;
+
+    impl crate::RandomInstance for ExpiryHeight {
+        fn random() -> Self {
+            let mut rng = rand::thread_rng();
+            let expiry_height = rand::Rng::gen_range(&mut rng, 0..=u32::MAX);
+            ExpiryHeight::from(expiry_height)
+        }
+    }
+
+    test_cbor_roundtrip!(ExpiryHeight);
+}

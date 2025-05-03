@@ -1,8 +1,6 @@
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
-
 /// Represents a Zcash network environment (mainnet, testnet, or regtest).
 ///
 /// The `Network` enum identifies which Zcash network a wallet, address,
@@ -102,15 +100,21 @@ impl TryFrom<Envelope> for Network {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Network {
-    fn random() -> Self {
-        match rand::random::<u8>() % 3 {
-            0 => Network::Main,
-            1 => Network::Test,
-            _ => Network::Regtest,
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+
+    use super::Network;
+
+    impl crate::RandomInstance for Network {
+        fn random() -> Self {
+            match rand::random::<u8>() % 3 {
+                0 => Network::Main,
+                1 => Network::Test,
+                _ => Network::Regtest,
+            }
         }
     }
-}
 
-test_cbor_roundtrip!(Network);
-test_envelope_roundtrip!(Network);
+    test_cbor_roundtrip!(Network);
+    test_envelope_roundtrip!(Network);
+}

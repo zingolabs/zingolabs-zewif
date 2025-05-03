@@ -6,7 +6,7 @@ use std::{
 use anyhow::{Error, Result, anyhow, bail};
 use bc_envelope::prelude::*;
 
-use crate::{format_signed_zats_as_zec, test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::format_signed_zats_as_zec;
 
 /// Number of zatoshis (zats) in 1 ZEC
 pub const COIN: u64 = 1_0000_0000;
@@ -56,6 +56,8 @@ pub const MAX_BALANCE: i64 = MAX_MONEY as i64;
 /// # Ok(())
 /// # }
 /// ```
+/// FIXME: Amounts in the zewif format should never be negative; negative values are only used
+/// transiently in the protocol.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Amount(i64);
 
@@ -347,13 +349,19 @@ impl TryFrom<Envelope> for Amount {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Amount {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        let value = rand::Rng::gen_range(&mut rng, -MAX_BALANCE..=MAX_BALANCE);
-        Self(value)
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(Amount);
-test_envelope_roundtrip!(Amount);
+    use super::{Amount, MAX_BALANCE};
+
+    impl crate::RandomInstance for Amount {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            let value = rand::Rng::gen_range(&mut rng, -MAX_BALANCE..=MAX_BALANCE);
+            Self(value)
+        }
+    }
+
+    test_cbor_roundtrip!(Amount);
+    test_envelope_roundtrip!(Amount);
+}

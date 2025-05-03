@@ -3,8 +3,6 @@ use std::cmp::{Ord, Ordering};
 use std::fmt;
 use std::ops::{Add, Sub};
 
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
-
 /// A block's position in the blockchain, represented as a distance from the genesis block.
 ///
 /// `BlockHeight` represents the number of blocks between a specific block and the genesis
@@ -229,13 +227,19 @@ impl TryFrom<Envelope> for BlockHeight {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for BlockHeight {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        let value = rand::Rng::gen_range(&mut rng, 0..u32::MAX);
-        Self(value)
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(BlockHeight);
-test_envelope_roundtrip!(BlockHeight);
+    use super::BlockHeight;
+
+    impl crate::RandomInstance for BlockHeight {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            let value = rand::Rng::gen_range(&mut rng, 0..u32::MAX);
+            Self(value)
+        }
+    }
+
+    test_cbor_roundtrip!(BlockHeight);
+    test_envelope_roundtrip!(BlockHeight);
+}

@@ -1,3 +1,6 @@
+use anyhow::{Context, Error, Result};
+use bc_envelope::prelude::*;
+use hex::FromHexError;
 use std::{
     array::TryFromSliceError,
     fmt,
@@ -5,13 +8,6 @@ use std::{
         Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
     },
 };
-
-use anyhow::{Context, Error, Result};
-use bc_envelope::prelude::*;
-
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
-
-use hex::FromHexError;
 
 /// Errors that can occur in decoding a blob from its hex-encoded representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -329,9 +325,11 @@ impl<const N: usize> From<&[u8; N]> for Blob<N> {
 
 /// Type alias for Blob<20>
 pub type Blob20 = Blob<20>;
+impl Copy for Blob20 {}
 
 /// Type alias for Blob<32>
 pub type Blob32 = Blob<32>;
+impl Copy for Blob32 {}
 
 /// Type alias for Blob<64>
 pub type Blob64 = Blob<64>;
@@ -374,12 +372,18 @@ impl<const N: usize> TryFrom<Envelope> for Blob<N> {
 }
 
 #[cfg(test)]
-impl<const N: usize> crate::RandomInstance for Blob<N> {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        Self(bc_rand::rng_random_array(&mut rng))
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(Blob32);
-test_envelope_roundtrip!(Blob32);
+    use super::{Blob, Blob32};
+
+    impl<const N: usize> crate::RandomInstance for Blob<N> {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            Self(bc_rand::rng_random_array(&mut rng))
+        }
+    }
+
+    test_cbor_roundtrip!(Blob32);
+    test_envelope_roundtrip!(Blob32);
+}

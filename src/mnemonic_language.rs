@@ -1,8 +1,6 @@
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
-
 /// The language used for BIP-39/BIP-44 mnemonic seed phrases in a wallet.
 ///
 /// `MnemonicLanguage` represents the human language in which a wallet's recovery
@@ -227,11 +225,17 @@ impl TryFrom<Envelope> for MnemonicLanguage {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for MnemonicLanguage {
-    fn random() -> Self {
-        MnemonicLanguage::from_u32(rand::random::<u8>() as u32 % 10).unwrap()
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(MnemonicLanguage);
-test_envelope_roundtrip!(MnemonicLanguage);
+    use super::MnemonicLanguage;
+
+    impl crate::RandomInstance for MnemonicLanguage {
+        fn random() -> Self {
+            MnemonicLanguage::from_u32(rand::random::<u8>() as u32 % 10).unwrap()
+        }
+    }
+
+    test_cbor_roundtrip!(MnemonicLanguage);
+    test_envelope_roundtrip!(MnemonicLanguage);
+}

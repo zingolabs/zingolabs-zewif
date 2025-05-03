@@ -1,7 +1,10 @@
-use crate::{ HexParseError, test_cbor_roundtrip, test_envelope_roundtrip };
-use anyhow::{ Context, Result };
+use crate::HexParseError;
+use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
-use std::{ fmt, io::{ self, Read, Write } };
+use std::{
+    fmt,
+    io::{self, Read, Write},
+};
 
 /// A transaction identifier (BlockHash) represented as a 32-byte hash.
 ///
@@ -97,16 +100,12 @@ impl BlockHash {
         let mut data = hex::decode(hex).map_err(crate::HexParseError::HexInvalid)?;
         data.reverse();
 
-        Ok(
-            Self(
-                <[u8; 32]>::try_from(&data[..]).map_err(|_| {
-                    crate::HexParseError::SliceInvalid {
-                        expected: 64,
-                        actual: hex.len(),
-                    }
-                })?
-            )
-        )
+        Ok(Self(<[u8; 32]>::try_from(&data[..]).map_err(|_| {
+            crate::HexParseError::SliceInvalid {
+                expected: 64,
+                actual: hex.len(),
+            }
+        })?))
     }
 
     /// Reads a `BlockHash` from any source implementing the `Read` trait.
@@ -189,9 +188,11 @@ impl TryFrom<CBOR> for BlockHash {
     fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
         if bytes.len() != 32 {
-            return Err(
-                format!("Invalid BlockHash length: expected 32 bytes, got {}", bytes.len()).into()
-            );
+            return Err(format!(
+                "Invalid BlockHash length: expected 32 bytes, got {}",
+                bytes.len()
+            )
+            .into());
         }
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);
@@ -214,12 +215,18 @@ impl TryFrom<Envelope> for BlockHash {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for BlockHash {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        Self(bc_rand::rng_random_array(&mut rng))
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(BlockHash);
-test_envelope_roundtrip!(BlockHash);
+    use super::BlockHash;
+
+    impl crate::RandomInstance for BlockHash {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            Self(bc_rand::rng_random_array(&mut rng))
+        }
+    }
+
+    test_cbor_roundtrip!(BlockHash);
+    test_envelope_roundtrip!(BlockHash);
+}

@@ -1,5 +1,4 @@
 use super::TxId;
-use crate::test_envelope_roundtrip;
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
@@ -157,19 +156,32 @@ impl TryFrom<Envelope> for TxOutPoint {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("TxOutPoint").context("TxOutPoint")?;
+        envelope
+            .check_type_envelope("TxOutPoint")
+            .context("TxOutPoint")?;
         let index = envelope.extract_subject().context("index")?;
-        let txid = envelope.extract_object_for_predicate("txid").context("txid")?;
+        let txid = envelope
+            .extract_object_for_predicate("txid")
+            .context("txid")?;
 
         Ok(TxOutPoint::new(txid, index))
     }
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for TxOutPoint {
-    fn random() -> Self {
-        Self { txid: TxId::random(), index: rand::random() }
-    }
-}
+mod tests {
+    use crate::{TxId, test_envelope_roundtrip};
 
-test_envelope_roundtrip!(TxOutPoint);
+    use super::TxOutPoint;
+
+    impl crate::RandomInstance for TxOutPoint {
+        fn random() -> Self {
+            Self {
+                txid: TxId::random(),
+                index: rand::random(),
+            }
+        }
+    }
+
+    test_envelope_roundtrip!(TxOutPoint);
+}

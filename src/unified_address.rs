@@ -1,4 +1,4 @@
-use crate::{Blob, test_envelope_roundtrip};
+use crate::Blob;
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
@@ -54,8 +54,8 @@ pub struct UnifiedAddress {
     /// The full unified address string (starting with "u...")
     address: String,
 
-    /// The diversifier index used to derive this unified address
-    /// This is an 11-byte value used in the address derivation process
+    /// The diversifier index used to derive this unified address.
+    /// This is an 11-byte unsigned integer in little-endian order.
     diversifier_index: Option<Blob<11>>,
 
     /// HD derivation path if this address was derived using HD wallet techniques
@@ -159,14 +159,20 @@ impl TryFrom<Envelope> for UnifiedAddress {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for UnifiedAddress {
-    fn random() -> Self {
-        Self {
-            address: String::random(),
-            diversifier_index: Blob::opt_random(),
-            hd_derivation_path: String::opt_random(),
+mod tests {
+    use crate::{Blob, test_envelope_roundtrip};
+
+    use super::UnifiedAddress;
+
+    impl crate::RandomInstance for UnifiedAddress {
+        fn random() -> Self {
+            Self {
+                address: String::random(),
+                diversifier_index: Blob::opt_random(),
+                hd_derivation_path: String::opt_random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(UnifiedAddress);
+    test_envelope_roundtrip!(UnifiedAddress);
+}

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 
-use crate::{MnemonicLanguage, NoQuotesDebugOption, SeedFingerprint, test_envelope_roundtrip};
+use crate::{MnemonicLanguage, NoQuotesDebugOption, SeedFingerprint};
 
 #[derive(Clone, PartialEq)]
 pub struct Bip39Mnemonic {
@@ -89,14 +89,20 @@ impl TryFrom<Envelope> for Bip39Mnemonic {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Bip39Mnemonic {
-    fn random() -> Self {
-        Self {
-            mnemonic: String::random(),
-            language: MnemonicLanguage::opt_random(),
-            fingerprint: SeedFingerprint::opt_random(),
+mod tests {
+    use crate::{MnemonicLanguage, SeedFingerprint, test_envelope_roundtrip};
+
+    use super::Bip39Mnemonic;
+
+    impl crate::RandomInstance for Bip39Mnemonic {
+        fn random() -> Self {
+            Self {
+                mnemonic: String::random(),
+                language: MnemonicLanguage::opt_random(),
+                fingerprint: SeedFingerprint::opt_random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(Bip39Mnemonic);
+    test_envelope_roundtrip!(Bip39Mnemonic);
+}

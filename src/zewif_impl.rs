@@ -3,7 +3,7 @@ use bc_components::ARID;
 use bc_envelope::prelude::*;
 use std::collections::HashMap;
 
-use crate::{Indexed, envelope_indexed_objects_for_predicate, test_envelope_roundtrip};
+use crate::{Indexed, envelope_indexed_objects_for_predicate};
 
 use super::{Transaction, TxId, ZewifWallet};
 
@@ -151,18 +151,29 @@ impl TryFrom<Envelope> for Zewif {
 }
 
 #[cfg(test)]
-#[rustfmt::skip]
-impl crate::RandomInstance for Zewif {
-    fn random() -> Self {
-        use crate::SetIndexes;
+mod tests {
+    use bc_components::ARID;
+    use bc_envelope::Attachments;
 
-        Self {
-            id: ARID::new(),
-            wallets: Vec::random().set_indexes(),
-            transactions: Vec::<Transaction>::random().iter().map(|tx| (tx.txid(), tx.clone())).collect(),
-            attachments: Attachments::random(),
+    use crate::{Transaction, test_envelope_roundtrip};
+
+    use super::Zewif;
+
+    impl crate::RandomInstance for Zewif {
+        fn random() -> Self {
+            use crate::SetIndexes;
+
+            Self {
+                id: ARID::new(),
+                wallets: Vec::random().set_indexes(),
+                transactions: Vec::<Transaction>::random()
+                    .iter()
+                    .map(|tx| (tx.txid(), tx.clone()))
+                    .collect(),
+                attachments: Attachments::random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(Zewif);
+    test_envelope_roundtrip!(Zewif);
+}
