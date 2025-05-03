@@ -68,8 +68,8 @@ mod mod_use_macro;
 mod string_macro;
 mod test_roundtrip_macros;
 
-#[cfg(test)]
 // Test utilities
+#[cfg(any(test, feature = "test-dependencies"))]
 mod_use!(test_utils);
 
 // Modules requiring qualified paths

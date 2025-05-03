@@ -55,7 +55,7 @@ pub struct UnifiedAddress {
     address: String,
 
     /// The diversifier index used to derive this unified address
-    /// This is typically an 11-byte value used in the address derivation process
+    /// This is an 11-byte value used in the address derivation process
     diversifier_index: Option<Blob<11>>,
 
     /// HD derivation path if this address was derived using HD wallet techniques
@@ -79,6 +79,19 @@ impl UnifiedAddress {
             address,
             diversifier_index: None,
             hd_derivation_path: None,
+        }
+    }
+
+    /// Creates a new UnifiedAddress from its constituent parts.
+    pub fn from_parts(
+        address: String,
+        diversifier_index: Option<Blob<11>>,
+        hd_derivation_path: Option<String>,
+    ) -> Self {
+        UnifiedAddress {
+            address,
+            diversifier_index,
+            hd_derivation_path,
         }
     }
 
