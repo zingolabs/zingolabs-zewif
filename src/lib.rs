@@ -101,7 +101,6 @@ mod_use!(seed);
 mod_use!(seed_material);
 mod_use!(seed_fingerprint);
 mod_use!(string_utils);
-mod_use!(transaction_status);
 mod_use!(transaction);
 mod_use!(tx_block_position);
 mod_use!(tx_out_point);
