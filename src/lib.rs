@@ -103,7 +103,6 @@ mod_use!(seed_fingerprint);
 mod_use!(string_utils);
 mod_use!(transaction);
 mod_use!(tx_block_position);
-mod_use!(tx_out_point);
 mod_use!(txid);
 mod_use!(unified_address);
 mod_use!(zewif_envelope);
