@@ -88,7 +88,6 @@ mod_use!(block_hash);
 mod_use!(block_height);
 mod_use!(data);
 mod_use!(derivation_info);
-mod_use!(expiry_height);
 mod_use!(incremental_witness);
 mod_use!(indexed);
 mod_use!(memo);
