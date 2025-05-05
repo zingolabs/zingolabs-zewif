@@ -95,7 +95,6 @@ mod_use!(memo);
 mod_use!(mnemonic_language);
 mod_use!(network);
 mod_use!(non_hardened_child_index);
-mod_use!(position);
 mod_use!(protocol_address);
 mod_use!(script);
 mod_use!(seed);
