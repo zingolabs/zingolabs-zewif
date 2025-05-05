@@ -63,10 +63,13 @@ pub struct Account {
     // User-defined, may not be unique.
     name: String,
 
+    // The ZIP 32 account ID used in derivation from an HD seed.
     zip32_account_id: Option<u32>,
+
+    // The set of addresses that are associated with this account.
     addresses: Vec<Address>,
 
-    // Subset of the global transaction history.
+    // Subset of the global transaction history that involves this account.
     relevant_transactions: HashSet<TxId>,
 
     // The following are intended for storage of information that may not be
