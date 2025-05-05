@@ -144,6 +144,11 @@ impl<const N: usize> Blob<N> {
         &self.0
     }
 
+    /// exposes the underlying byte array.
+    pub fn as_bytes(&self) -> &[u8; N] {
+        &self.0
+    }
+
     /// Creates a `Blob` from a slice of bytes.
     ///
     /// # Errors
