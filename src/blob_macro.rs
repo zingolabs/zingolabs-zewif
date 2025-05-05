@@ -54,6 +54,16 @@ macro_rules! blob {
                 self.0.to_vec()
             }
 
+            /// Exposes the underlying byte array as a slice.
+            pub fn as_slice(&self) -> &[u8] {
+                &self.0
+            }
+
+            /// Exposes the underlying byte array.
+            pub fn as_bytes(&self) -> &[u8; $size] {
+                &self.0
+            }
+
             /// Creates an instance from a slice of bytes.
             ///
             /// # Errors
