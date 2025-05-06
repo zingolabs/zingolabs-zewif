@@ -3,8 +3,8 @@ use bc_envelope::prelude::*;
 use std::collections::HashSet;
 
 use crate::{
-    Address, Indexed, NoQuotesDebugOption, TxId, envelope_indexed_objects_for_predicate,
-    orchard::OrchardSentOutput, sapling::SaplingSentOutput,
+    Address, BlockHash, BlockHeight, Indexed, NoQuotesDebugOption, TxId,
+    envelope_indexed_objects_for_predicate, orchard::OrchardSentOutput, sapling::SaplingSentOutput,
 };
 
 /// A logical grouping of addresses and transaction history within a wallet.
@@ -63,6 +63,21 @@ pub struct Account {
     // User-defined, may not be unique.
     name: String,
 
+    // The birthday height of the account, if known.
+    //
+    // This is the minimum block height at which the restoring wallet should trial-decrypt
+    // transactions to find shielded inputs.
+    birthday_height: Option<BlockHeight>,
+
+    // The hash of the birthday block, if known.
+    //
+    // If the wallet's birthday height is within 100 blocks of the export height for the overall
+    // [`Zewif`] value containing the wallet having this account, the restoring wallet should
+    // verify that the birthday block exists within the main chain.
+    //
+    // [`Zewif`]: crate::Zewif
+    birthday_block: Option<BlockHash>,
+
     // The ZIP 32 account ID used in derivation from an HD seed.
     zip32_account_id: Option<u32>,
 
@@ -85,6 +100,8 @@ impl std::fmt::Debug for Account {
         f.debug_struct("Account")
             .field("index", &self.index)
             .field("name", &self.name)
+            .field("birthday_height", &self.birthday_height)
+            .field("birthday_block", &self.birthday_block)
             .field("zip32_account_id", &NoQuotesDebugOption(&self.zip32_account_id))
             .field("addresses", &self.addresses)
             .field("relevant_transactions", &self.relevant_transactions)
@@ -112,6 +129,8 @@ impl Account {
         Self {
             index: 0,
             name: String::default(),
+            birthday_height: None,
+            birthday_block: None,
             zip32_account_id: None,
             addresses: Vec::new(),
             relevant_transactions: HashSet::new(),
@@ -127,6 +146,22 @@ impl Account {
 
     pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
+    }
+
+    pub fn birthday_height(&self) -> Option<BlockHeight> {
+        self.birthday_height
+    }
+
+    pub fn set_birthday_height(&mut self, birthday_height: Option<BlockHeight>) {
+        self.birthday_height = birthday_height;
+    }
+
+    pub fn birthday_block(&self) -> Option<BlockHash> {
+        self.birthday_block
+    }
+
+    pub fn set_birthday_block(&mut self, birthday_block: Option<BlockHash>) {
+        self.birthday_block = birthday_block;
     }
 
     pub fn zip32_account_id(&self) -> Option<u32> {
@@ -201,6 +236,8 @@ impl From<Account> for Envelope {
         let mut e = Envelope::new(value.index)
             .add_type("Account")
             .add_assertion("name", value.name)
+            .add_optional_assertion("birthday_height", value.birthday_height)
+            .add_optional_assertion("birthday_block", value.birthday_block)
             .add_optional_assertion("zip32_account_id", value.zip32_account_id)
             .add_assertion("relevant_transactions", value.relevant_transactions.sort_by_cbor_encoding()); // Deterministic ordering
 
@@ -212,26 +249,44 @@ impl From<Account> for Envelope {
     }
 }
 
-#[rustfmt::skip]
 impl TryFrom<Envelope> for Account {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self> {
         envelope.check_type_envelope("Account").context("account")?;
         let index = envelope.extract_subject().context("index")?;
-        let name = envelope.extract_object_for_predicate("name").context("name")?;
-        let zip32_account_id = envelope.extract_optional_object_for_predicate("zip32_account_id").context("zip32_account_id")?;
-        let relevant_transactions = envelope.extract_object_for_predicate("relevant_transactions").context("relevant_transactions")?;
+        let name = envelope
+            .extract_object_for_predicate("name")
+            .context("name")?;
+        let birthday_height = envelope
+            .extract_optional_object_for_predicate("birthday_height")
+            .context("birthday_height")?;
+        let birthday_block = envelope
+            .extract_optional_object_for_predicate("birthday_block")
+            .context("birthday_block")?;
+        let zip32_account_id = envelope
+            .extract_optional_object_for_predicate("zip32_account_id")
+            .context("zip32_account_id")?;
+        let relevant_transactions = envelope
+            .extract_object_for_predicate("relevant_transactions")
+            .context("relevant_transactions")?;
 
-        let addresses = envelope_indexed_objects_for_predicate(&envelope, "address").context("addresses")?;
-        let sapling_sent_outputs = envelope_indexed_objects_for_predicate(&envelope, "sapling_sent_output").context("sapling_sent_outputs")?;
-        let orchard_sent_outputs = envelope_indexed_objects_for_predicate(&envelope, "orchard_sent_output").context("orchard_sent_outputs")?;
+        let addresses =
+            envelope_indexed_objects_for_predicate(&envelope, "address").context("addresses")?;
+        let sapling_sent_outputs =
+            envelope_indexed_objects_for_predicate(&envelope, "sapling_sent_output")
+                .context("sapling_sent_outputs")?;
+        let orchard_sent_outputs =
+            envelope_indexed_objects_for_predicate(&envelope, "orchard_sent_output")
+                .context("orchard_sent_outputs")?;
 
         let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
 
         Ok(Self {
             index,
             name,
+            birthday_height,
+            birthday_block,
             zip32_account_id,
             addresses,
             relevant_transactions,
@@ -248,7 +303,7 @@ mod tests {
 
     use bc_envelope::Attachments;
 
-    use crate::test_envelope_roundtrip;
+    use crate::{BlockHash, BlockHeight, test_envelope_roundtrip};
 
     use super::Account;
 
@@ -259,6 +314,8 @@ mod tests {
             Self {
                 index: 0,
                 name: String::random(),
+                birthday_height: BlockHeight::opt_random(),
+                birthday_block: BlockHash::opt_random(),
                 zip32_account_id: u32::opt_random(),
                 addresses: Vec::random().set_indexes(),
                 relevant_transactions: HashSet::random(),
