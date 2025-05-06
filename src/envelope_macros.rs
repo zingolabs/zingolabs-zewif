@@ -15,14 +15,7 @@ macro_rules! blob_envelope {
             fn try_from(envelope: bc_envelope::Envelope) -> Result<Self, Self::Error> {
                 envelope.check_type_envelope(stringify!($name))?;
                 let bytes = envelope.subject().try_byte_string()?;
-                $crate::parse!(buf = &bytes, $name, stringify!($name))
-            }
-        }
-
-        #[cfg(test)]
-        impl $crate::RandomInstance for $name {
-            fn random() -> Self {
-                Self($crate::Blob::random())
+                Ok(Self::try_from(bytes)?)
             }
         }
 

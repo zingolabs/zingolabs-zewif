@@ -1,8 +1,6 @@
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
-use crate::{parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip};
-
 /// The language used for BIP-39/BIP-44 mnemonic seed phrases in a wallet.
 ///
 /// `MnemonicLanguage` represents the human language in which a wallet's recovery
@@ -160,32 +158,6 @@ impl std::fmt::Debug for MnemonicLanguage {
     }
 }
 
-/// Parses a mnemonic language from binary data
-///
-/// This implementation allows `MnemonicLanguage` to be parsed from a binary
-/// stream using the `parse!` macro, which is particularly useful when reading
-/// wallet file data.
-///
-/// # Examples
-/// ```no_run
-/// # use zewif::MnemonicLanguage;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a mnemonic language from wallet binary data
-/// let language = parse!(parser, MnemonicLanguage, "mnemonic language")?;
-/// # Ok(())
-/// # }
-/// ```
-impl Parse for MnemonicLanguage {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        let value = parse!(p, "language value")?;
-        MnemonicLanguage::from_u32(value)
-    }
-}
-
 impl From<MnemonicLanguage> for String {
     fn from(value: MnemonicLanguage) -> Self {
         match value {
@@ -253,11 +225,17 @@ impl TryFrom<Envelope> for MnemonicLanguage {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for MnemonicLanguage {
-    fn random() -> Self {
-        MnemonicLanguage::from_u32(rand::random::<u8>() as u32 % 10).unwrap()
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(MnemonicLanguage);
-test_envelope_roundtrip!(MnemonicLanguage);
+    use super::MnemonicLanguage;
+
+    impl crate::RandomInstance for MnemonicLanguage {
+        fn random() -> Self {
+            MnemonicLanguage::from_u32(rand::random::<u8>() as u32 % 10).unwrap()
+        }
+    }
+
+    test_cbor_roundtrip!(MnemonicLanguage);
+    test_envelope_roundtrip!(MnemonicLanguage);
+}

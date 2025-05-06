@@ -3,33 +3,33 @@ use bc_envelope::prelude::*;
 
 use crate::{IncrementalWitness, blob, blob_envelope};
 
-/// The depth of the Zcash Sapling note commitment tree.
-const SAPLING_COMMITMENT_TREE_DEPTH: usize = 32;
+/// The depth of the Zcash Orchard note commitment tree.
+const ORCHARD_COMMITMENT_TREE_DEPTH: usize = 32;
 
 blob!(
-    MerkleHashSapling,
+    MerkleHashOrchard,
     32,
-    "A node in the Sapling note commitment tree."
+    "A node in the Orchard note commitment tree."
 );
-impl Copy for MerkleHashSapling {}
+impl Copy for MerkleHashOrchard {}
 
-blob_envelope!(MerkleHashSapling);
+blob_envelope!(MerkleHashOrchard);
 
-/// A cryptographic witness proving that a Sapling note commitment exists in the note commitment tree.
+/// A cryptographic witness proving that a Orchard note commitment exists in the note commitment tree.
 ///
-/// `SaplingWitness` is a specialized form of incremental Merkle tree witness for the
-/// Sapling protocol. It proves that a specific note commitment is included in the
-/// global Sapling note commitment tree, which is necessary when spending a note.
+/// `OrchardWitness` is a specialized form of incremental Merkle tree witness for the
+/// Orchard protocol. It proves that a specific note commitment is included in the
+/// global Orchard note commitment tree, which is necessary when spending a note.
 ///
 /// # Zcash Concept Relation
-/// In Zcash's Sapling protocol:
+/// In Zcash's Orchard protocol:
 ///
-/// - **Note Commitment Tree**: A Merkle tree containing all Sapling note commitments
+/// - **Note Commitment Tree**: A Merkle tree containing all Orchard note commitments
 /// - **Merkle Path**: The path from a leaf (note commitment) to the root of the tree
 /// - **Witness**: The authentication path proving a leaf exists in the tree
 /// - **Anchors**: Root hashes of the note commitment tree at specific blockchain heights
 ///
-/// When spending a Sapling note, a zero-knowledge proof must demonstrate that the
+/// When spending a Orchard note, a zero-knowledge proof must demonstrate that the
 /// note's commitment exists in the tree at a specific anchor (root hash), without
 /// revealing which specific commitment is being spent. The witness provides the
 /// necessary path information to create this proof.
@@ -40,17 +40,17 @@ blob_envelope!(MerkleHashSapling);
 ///
 /// - The authentication path (sequence of hashes forming the Merkle path)
 /// - The position of the note commitment in the tree
-/// - The tree depth used (32 for Sapling)
+/// - The tree depth used (32 for Orchard)
 ///
 /// Without this witness data, unspent notes cannot be spent as it would be impossible
 /// to prove their inclusion in the note commitment tree.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SaplingWitness(IncrementalWitness<SAPLING_COMMITMENT_TREE_DEPTH, MerkleHashSapling>);
+pub struct OrchardWitness(IncrementalWitness<ORCHARD_COMMITMENT_TREE_DEPTH, MerkleHashOrchard>);
 
-impl From<SaplingWitness> for Envelope {
-    fn from(value: SaplingWitness) -> Self {
+impl From<OrchardWitness> for Envelope {
+    fn from(value: OrchardWitness) -> Self {
         Envelope::new(*value.0.note_commitment())
-            .add_type("SaplingWitness")
+            .add_type("OrchardWitness")
             .add_assertion("note_position", value.0.note_position())
             .add_assertion("merkle_path", value.0.merkle_path().to_vec())
             .add_assertion("anchor", *value.0.anchor())
@@ -59,13 +59,13 @@ impl From<SaplingWitness> for Envelope {
     }
 }
 
-impl TryFrom<Envelope> for SaplingWitness {
+impl TryFrom<Envelope> for OrchardWitness {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
         envelope
-            .check_type_envelope("SaplingWitness")
-            .context("SaplingWitness")?;
+            .check_type_envelope("OrchardWitness")
+            .context("OrchardWitness")?;
         let note_commitment = envelope.try_as().context("note_commitment")?;
         let note_position = envelope
             .extract_object_for_predicate("note_position")
@@ -88,7 +88,7 @@ impl TryFrom<Envelope> for SaplingWitness {
             merkle_path,
             anchor,
             anchor_tree_size,
-            anchor_frontier,
+            anchor_frontier
         )))
     }
 }
@@ -97,13 +97,13 @@ impl TryFrom<Envelope> for SaplingWitness {
 mod tests {
     use crate::{IncrementalWitness, RandomInstance, test_envelope_roundtrip};
 
-    use super::SaplingWitness;
+    use super::OrchardWitness;
 
-    impl RandomInstance for SaplingWitness {
+    impl RandomInstance for OrchardWitness {
         fn random() -> Self {
             Self(IncrementalWitness::random())
         }
     }
 
-    test_envelope_roundtrip!(SaplingWitness);
+    test_envelope_roundtrip!(OrchardWitness);
 }

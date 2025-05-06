@@ -1,5 +1,5 @@
-use crate::{ DebugOption, Indexed, test_envelope_roundtrip };
-use anyhow::{ Result, Context };
+use crate::{DebugOption, Indexed};
+use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 
 use super::ProtocolAddress;
@@ -326,16 +326,24 @@ impl TryFrom<Envelope> for Address {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Address {
-    fn random() -> Self {
-        Self {
-            index: 0,
-            name: String::random(),
-            purpose: String::opt_random(),
-            address: ProtocolAddress::random(),
-            attachments: Attachments::random(),
+mod tests {
+    use bc_envelope::Attachments;
+
+    use crate::{ProtocolAddress, test_envelope_roundtrip};
+
+    use super::Address;
+
+    impl crate::RandomInstance for Address {
+        fn random() -> Self {
+            Self {
+                index: 0,
+                name: String::random(),
+                purpose: String::opt_random(),
+                address: ProtocolAddress::random(),
+                attachments: Attachments::random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(Address);
+    test_envelope_roundtrip!(Address);
+}

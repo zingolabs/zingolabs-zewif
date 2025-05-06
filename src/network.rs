@@ -1,8 +1,5 @@
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
-use zcash_protocol::consensus::NetworkType;
-
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
 /// Represents a Zcash network environment (mainnet, testnet, or regtest).
 ///
@@ -41,33 +38,18 @@ use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 /// }
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Network(NetworkType);
-
-#[allow(non_upper_case_globals)]
-impl Network {
-    pub const Main: Self = Network(NetworkType::Main);
-    pub const Test: Self = Network(NetworkType::Test);
-    pub const Regtest: Self = Network(NetworkType::Regtest);
-}
-
-impl From<NetworkType> for Network {
-    fn from(value: NetworkType) -> Self {
-        Network(value)
-    }
-}
-
-impl From<Network> for NetworkType {
-    fn from(value: Network) -> Self {
-        value.0
-    }
+pub enum Network {
+    Main,
+    Test,
+    Regtest,
 }
 
 impl From<Network> for String {
     fn from(value: Network) -> String {
-        match value.0 {
-            NetworkType::Main => "main".to_string(),
-            NetworkType::Test => "test".to_string(),
-            NetworkType::Regtest => "regtest".to_string(),
+        match value {
+            Network::Main => "main".to_string(),
+            Network::Test => "test".to_string(),
+            Network::Regtest => "regtest".to_string(),
         }
     }
 }
@@ -77,11 +59,11 @@ impl TryFrom<String> for Network {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         if value == "main" {
-            Ok(Network(NetworkType::Main))
+            Ok(Network::Main)
         } else if value == "test" {
-            Ok(Network(NetworkType::Test))
+            Ok(Network::Test)
         } else if value == "regtest" {
-            Ok(Network(NetworkType::Regtest))
+            Ok(Network::Regtest)
         } else {
             bail!("Invalid network identifier: {}", value)
         }
@@ -118,15 +100,21 @@ impl TryFrom<Envelope> for Network {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Network {
-    fn random() -> Self {
-        Network(match rand::random::<u8>() % 3 {
-            0 => NetworkType::Main,
-            1 => NetworkType::Test,
-            _ => NetworkType::Regtest,
-        })
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(Network);
-test_envelope_roundtrip!(Network);
+    use super::Network;
+
+    impl crate::RandomInstance for Network {
+        fn random() -> Self {
+            match rand::random::<u8>() % 3 {
+                0 => Network::Main,
+                1 => Network::Test,
+                _ => Network::Regtest,
+            }
+        }
+    }
+
+    test_cbor_roundtrip!(Network);
+    test_envelope_roundtrip!(Network);
+}

@@ -91,6 +91,14 @@ macro_rules! data {
             }
         }
 
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.0.eq(&other.0)
+            }
+        }
+
+        impl Eq for $name {}
+
         impl AsRef<[u8]> for $name {
             fn as_ref(&self) -> &[u8] {
                 self.0.as_ref()
@@ -121,14 +129,31 @@ macro_rules! data {
             }
         }
 
-        impl $crate::parser::Parse for $name {
-            /// Parses this type from a binary data stream.
-            ///
-            /// This implementation allows the type to be used with the `parse!` macro.
-            /// The data is parsed as a length-prefixed byte array using a `CompactSize`
-            /// value to indicate the length.
-            fn parse(parser: &mut $crate::parser::Parser) -> ::anyhow::Result<Self> {
-                Ok(Self($crate::Data::parse(parser)?))
+        impl From<$name> for bc_envelope::prelude::CBOR {
+            fn from(data: $name) -> Self {
+                bc_envelope::prelude::CBOR::to_byte_string(data.0)
+            }
+        }
+
+        impl From<&$name> for bc_envelope::prelude::CBOR {
+            fn from(data: &$name) -> Self {
+                bc_envelope::prelude::CBOR::to_byte_string(data.0.clone())
+            }
+        }
+
+        impl TryFrom<bc_envelope::prelude::CBOR> for $name {
+            type Error = dcbor::Error;
+
+            fn try_from(cbor: bc_envelope::prelude::CBOR) -> Result<Self, Self::Error> {
+                let bytes = cbor.try_into_byte_string()?;
+                Ok(Self::from_slice(&bytes))
+            }
+        }
+
+        #[cfg(test)]
+        impl $crate::RandomInstance for $name {
+            fn random() -> Self {
+                Self($crate::Data::random())
             }
         }
     };

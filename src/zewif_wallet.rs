@@ -1,8 +1,6 @@
 use super::Network;
 use super::{Account, SeedMaterial};
-use crate::{
-    Indexed, NoQuotesDebugOption, envelope_indexed_objects_for_predicate, test_envelope_roundtrip,
-};
+use crate::{Indexed, NoQuotesDebugOption, envelope_indexed_objects_for_predicate};
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
@@ -154,18 +152,26 @@ impl TryFrom<Envelope> for ZewifWallet {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for ZewifWallet {
-    fn random() -> Self {
-        use crate::SetIndexes;
+mod tests {
+    use bc_envelope::Attachments;
 
-        Self {
-            index: 0,
-            network: Network::random(),
-            seed_material: SeedMaterial::opt_random(),
-            accounts: Vec::random().set_indexes(),
-            attachments: Attachments::random(),
+    use crate::{Network, SeedMaterial, test_envelope_roundtrip};
+
+    use super::ZewifWallet;
+
+    impl crate::RandomInstance for ZewifWallet {
+        fn random() -> Self {
+            use crate::SetIndexes;
+
+            Self {
+                index: 0,
+                network: Network::random(),
+                seed_material: SeedMaterial::opt_random(),
+                accounts: Vec::random().set_indexes(),
+                attachments: Attachments::random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(ZewifWallet);
+    test_envelope_roundtrip!(ZewifWallet);
+}

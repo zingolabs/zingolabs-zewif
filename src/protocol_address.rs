@@ -57,11 +57,10 @@ pub enum ProtocolAddress {
     /// An exposed transparent (T-address) similar to Bitcoin's.
     Transparent(transparent::Address),
 
-    /// A shielded address (Z-address). This can include Sapling, Sprout
+    /// A Sapling address (Z-address).
     Sapling(Box<sapling::Address>),
 
     /// A unified address (U-address) that contains multiple receiver types.
-    /// Uses Box to reduce the total size of the enum since UnifiedAddress is larger.
     Unified(Box<UnifiedAddress>),
 }
 
@@ -194,22 +193,21 @@ impl TryFrom<Envelope> for ProtocolAddress {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for ProtocolAddress {
-    fn random() -> Self {
-        let mut rng = rand::thread_rng();
-        let choice = rand::Rng::gen_range(&mut rng, 0..3);
-        match choice {
-            0 => ProtocolAddress::Transparent(transparent::Address::random()),
-            1 => ProtocolAddress::Sapling(Box::new(sapling::Address::random())),
-            _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::ProtocolAddress;
-    use crate::test_envelope_roundtrip;
+    use crate::{UnifiedAddress, sapling, test_envelope_roundtrip, transparent};
+
+    impl crate::RandomInstance for ProtocolAddress {
+        fn random() -> Self {
+            let mut rng = rand::thread_rng();
+            let choice = rand::Rng::gen_range(&mut rng, 0..3);
+            match choice {
+                0 => ProtocolAddress::Transparent(transparent::Address::random()),
+                1 => ProtocolAddress::Sapling(Box::new(sapling::Address::random())),
+                _ => ProtocolAddress::Unified(Box::new(UnifiedAddress::random())),
+            }
+        }
+    }
 
     test_envelope_roundtrip!(ProtocolAddress);
 }

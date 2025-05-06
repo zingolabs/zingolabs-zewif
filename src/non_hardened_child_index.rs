@@ -1,7 +1,5 @@
-use bc_envelope::prelude::*;
 use anyhow::Context;
-
-use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
+use bc_envelope::prelude::*;
 
 /// A non-hardened index used in hierarchical deterministic wallet derivation paths.
 ///
@@ -86,11 +84,17 @@ impl TryFrom<Envelope> for NonHardenedChildIndex {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for NonHardenedChildIndex {
-    fn random() -> Self {
-        Self(u32::random())
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(NonHardenedChildIndex);
-test_envelope_roundtrip!(NonHardenedChildIndex);
+    use super::NonHardenedChildIndex;
+
+    impl crate::RandomInstance for NonHardenedChildIndex {
+        fn random() -> Self {
+            Self(u32::random())
+        }
+    }
+
+    test_cbor_roundtrip!(NonHardenedChildIndex);
+    test_envelope_roundtrip!(NonHardenedChildIndex);
+}

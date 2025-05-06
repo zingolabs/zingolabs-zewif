@@ -171,23 +171,24 @@ impl TryFrom<Envelope> for Transaction {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Transaction {
-    fn random() -> Self {
-        Self {
-            txid: TxId::random(),
-            raw: Data::opt_random(),
-            target_height: BlockHeight::opt_random(),
-            mined_height: BlockHeight::opt_random(),
-            block_position: TxBlockPosition::opt_random(),
-            attachments: Attachments::random(),
+mod tests {
+    use bc_envelope::Attachments;
+
+    use super::Transaction;
+    use crate::{BlockHeight, Data, TxBlockPosition, TxId, test_envelope_roundtrip};
+
+    impl crate::RandomInstance for Transaction {
+        fn random() -> Self {
+            Self {
+                txid: TxId::random(),
+                raw: Data::opt_random(),
+                target_height: BlockHeight::opt_random(),
+                mined_height: BlockHeight::opt_random(),
+                block_position: TxBlockPosition::opt_random(),
+                attachments: Attachments::random(),
+            }
         }
     }
-}
-
-#[cfg(test)]
-mod envelope_tests {
-    use crate::test_envelope_roundtrip;
-    use super::Transaction;
 
     test_envelope_roundtrip!(Transaction);
 }

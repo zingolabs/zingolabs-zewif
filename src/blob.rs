@@ -1,34 +1,18 @@
+use anyhow::{Context, Error, Result};
+use bc_envelope::prelude::*;
+use hex::FromHexError;
 use std::{
     array::TryFromSliceError,
     fmt,
     ops::{
-        Index,
-        IndexMut,
-        Range,
-        RangeFrom,
-        RangeFull,
-        RangeInclusive,
-        RangeTo,
-        RangeToInclusive,
+        Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
     },
 };
-
-use bc_envelope::prelude::*;
-use anyhow::{ Context, Error, Result };
-
-use crate::{ test_cbor_roundtrip, test_envelope_roundtrip };
-
-use super::parser::prelude::*;
-
-use hex::FromHexError;
 
 /// Errors that can occur in decoding a blob from its hex-encoded representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HexParseError {
-    SliceInvalid {
-        expected: usize,
-        actual: usize,
-    },
+    SliceInvalid { expected: usize, actual: usize },
     HexInvalid(FromHexError),
 }
 
@@ -81,23 +65,6 @@ impl std::error::Error for HexParseError {}
 ///
 /// // Convert to hex for display
 /// let hex_string = hex::encode(blob.as_slice());
-/// ```
-///
-/// ## Parsing from Binary Data
-/// ```no_run
-/// # use zewif::Blob;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a 32-byte transaction ID
-/// let txid = parse!(parser, Blob<32>, "transaction ID")?;
-///
-/// // Parse a 64-byte signature
-/// let signature = parse!(parser, Blob<64>, "signature")?;
-/// # Ok(())
-/// # }
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Blob<const N: usize>([u8; N]);
@@ -174,6 +141,11 @@ impl<const N: usize> Blob<N> {
     /// assert_eq!(slice, &[1, 2, 3, 4]);
     /// ```
     pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// exposes the underlying byte array.
+    pub fn as_bytes(&self) -> &[u8; N] {
         &self.0
     }
 
@@ -356,42 +328,13 @@ impl<const N: usize> From<&[u8; N]> for Blob<N> {
     }
 }
 
-/// Implementation of the `Parse` trait for fixed-size byte arrays.
-///
-/// This allows `Blob<N>` to be directly parsed from a binary stream using the
-/// `parse!` macro, which is particularly useful when reading ZCash structures
-/// like transaction IDs, keys, and other fixed-size fields.
-///
-/// # Examples
-/// ```no_run
-/// # use zewif::Blob;
-/// # use zewif::parser::Parser;
-/// # use zewif::parse;
-/// # use anyhow::Result;
-/// #
-/// # fn example(parser: &mut Parser) -> Result<()> {
-/// // Parse a 32-byte transaction hash from a binary stream
-/// let tx_hash = parse!(parser, Blob<32>, "transaction hash")?;
-///
-/// // The parse macro adds helpful context for error messages
-/// # Ok(())
-/// # }
-/// ```
-///
-/// # Errors
-/// Returns an error if the parser does not have N bytes remaining.
-impl<const N: usize> Parse for Blob<N> {
-    fn parse(parser: &mut Parser) -> Result<Self> where Self: Sized {
-        let data = parser.next(N).with_context(|| format!("Parsing Blob<{}>", N))?;
-        Ok(Self::from_slice(data)?)
-    }
-}
-
 /// Type alias for Blob<20>
 pub type Blob20 = Blob<20>;
+impl Copy for Blob20 {}
 
 /// Type alias for Blob<32>
 pub type Blob32 = Blob<32>;
+impl Copy for Blob32 {}
 
 /// Type alias for Blob<64>
 pub type Blob64 = Blob<64>;
@@ -413,9 +356,8 @@ impl<const N: usize> TryFrom<CBOR> for Blob<N> {
 
     fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
-        let blob = Blob::from_slice(&bytes).map_err(|e|
-            dcbor::Error::Custom(format!("Blob: {e}"))
-        )?;
+        let blob =
+            Blob::from_slice(&bytes).map_err(|e| dcbor::Error::Custom(format!("Blob: {e}")))?;
         Ok(blob)
     }
 }
@@ -435,12 +377,18 @@ impl<const N: usize> TryFrom<Envelope> for Blob<N> {
 }
 
 #[cfg(test)]
-impl<const N: usize> crate::RandomInstance for Blob<N> {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        Self(bc_rand::rng_random_array(&mut rng))
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(Blob32);
-test_envelope_roundtrip!(Blob32);
+    use super::{Blob, Blob32};
+
+    impl<const N: usize> crate::RandomInstance for Blob<N> {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            Self(bc_rand::rng_random_array(&mut rng))
+        }
+    }
+
+    test_cbor_roundtrip!(Blob32);
+    test_envelope_roundtrip!(Blob32);
+}

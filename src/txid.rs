@@ -1,5 +1,4 @@
-use super::parser::prelude::*;
-use crate::{HexParseError, test_cbor_roundtrip, test_envelope_roundtrip};
+use crate::HexParseError;
 use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 use std::{
@@ -67,27 +66,6 @@ impl AsRef<[u8; 32]> for TxId {
 impl From<TxId> for [u8; 32] {
     fn from(value: TxId) -> Self {
         value.0
-    }
-}
-
-impl Parse for TxId {
-    /// Parses a `TxId` from a binary data stream.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// # use zewif::TxId;
-    /// # use zewif::parser::Parser;
-    /// # use zewif::parse;
-    /// # use anyhow::Result;
-    /// #
-    /// # fn example(parser: &mut Parser) -> Result<()> {
-    /// // Parse a transaction ID from a binary stream
-    /// let txid = parse!(parser, TxId, "transaction ID")?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(TxId::read(p)?)
     }
 }
 
@@ -215,7 +193,8 @@ impl TryFrom<CBOR> for TxId {
             return Err(format!(
                 "Invalid TxId length: expected 32 bytes, got {}",
                 bytes.len()
-            ).into());
+            )
+            .into());
         }
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);
@@ -238,12 +217,18 @@ impl TryFrom<Envelope> for TxId {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for TxId {
-    fn random() -> Self {
-        let mut rng = bc_rand::thread_rng();
-        Self(bc_rand::rng_random_array(&mut rng))
-    }
-}
+mod tests {
+    use crate::{test_cbor_roundtrip, test_envelope_roundtrip};
 
-test_cbor_roundtrip!(TxId);
-test_envelope_roundtrip!(TxId);
+    use super::TxId;
+
+    impl crate::RandomInstance for TxId {
+        fn random() -> Self {
+            let mut rng = bc_rand::thread_rng();
+            Self(bc_rand::rng_random_array(&mut rng))
+        }
+    }
+
+    test_cbor_roundtrip!(TxId);
+    test_envelope_roundtrip!(TxId);
+}

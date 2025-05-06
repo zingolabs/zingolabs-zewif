@@ -66,20 +66,19 @@ impl TryFrom<Envelope> for TxBlockPosition {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for TxBlockPosition {
-    fn random() -> Self {
-        Self {
-            block_hash: BlockHash::random(),
-            index: u32::random(),
-        }
-    }
-}
-
-#[cfg(test)]
 mod envelope_tests {
-    use crate::test_envelope_roundtrip;
+    use crate::{BlockHash, test_envelope_roundtrip};
 
     use super::TxBlockPosition;
+
+    impl crate::RandomInstance for TxBlockPosition {
+        fn random() -> Self {
+            Self {
+                block_hash: BlockHash::random(),
+                index: u32::random(),
+            }
+        }
+    }
 
     test_envelope_roundtrip!(TxBlockPosition);
 }

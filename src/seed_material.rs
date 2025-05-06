@@ -1,4 +1,4 @@
-use crate::{Bip39Mnemonic, Seed, test_envelope_roundtrip};
+use crate::{Bip39Mnemonic, Seed};
 use anyhow::{Context, Result, bail};
 use bc_envelope::prelude::*;
 
@@ -97,7 +97,9 @@ impl TryFrom<Envelope> for SeedMaterial {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("SeedMaterial").context("SeedMaterial")?;
+        envelope
+            .check_type_envelope("SeedMaterial")
+            .context("SeedMaterial")?;
         if let Ok(mnemonic) = Bip39Mnemonic::try_from(envelope.clone()) {
             Ok(SeedMaterial::Bip39Mnemonic(mnemonic))
         } else if let Ok(seed) = Seed::try_from(envelope.clone()) {
@@ -109,14 +111,20 @@ impl TryFrom<Envelope> for SeedMaterial {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for SeedMaterial {
-    fn random() -> Self {
-        if rand::random::<bool>() {
-            SeedMaterial::Bip39Mnemonic(Bip39Mnemonic::random())
-        } else {
-            SeedMaterial::Seed(Seed::random())
+mod tests {
+    use crate::{Bip39Mnemonic, Seed, test_envelope_roundtrip};
+
+    use super::SeedMaterial;
+
+    impl crate::RandomInstance for SeedMaterial {
+        fn random() -> Self {
+            if rand::random::<bool>() {
+                SeedMaterial::Bip39Mnemonic(Bip39Mnemonic::random())
+            } else {
+                SeedMaterial::Seed(Seed::random())
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(SeedMaterial, 10, true);
+    test_envelope_roundtrip!(SeedMaterial, 10, true);
+}

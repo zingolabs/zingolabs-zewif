@@ -1,16 +1,8 @@
 use super::Data;
-use crate::{ parse, parser::prelude::*, test_cbor_roundtrip, test_envelope_roundtrip };
-use anyhow::{ Context, Result };
+use anyhow::{Context, Result};
 use bc_envelope::prelude::*;
 use std::ops::{
-    Index,
-    IndexMut,
-    Range,
-    RangeFrom,
-    RangeFull,
-    RangeInclusive,
-    RangeTo,
-    RangeToInclusive,
+    Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
 };
 
 /// A Bitcoin-style script for spending or encumbering coins in transparent transactions.
@@ -59,13 +51,6 @@ impl Script {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-}
-
-/// Parses a Script from a binary data stream
-impl Parse for Script {
-    fn parse(p: &mut Parser) -> Result<Self> {
-        Ok(Self(parse!(p, "Script")?))
     }
 }
 
@@ -236,15 +221,21 @@ impl TryFrom<Envelope> for Script {
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for Script {
-    fn random_with_size(size: usize) -> Self {
-        Self(Data::random_with_size(size))
+mod tests {
+    use crate::{Data, test_cbor_roundtrip, test_envelope_roundtrip};
+
+    use super::Script;
+
+    impl crate::RandomInstance for Script {
+        fn random_with_size(size: usize) -> Self {
+            Self(Data::random_with_size(size))
+        }
+
+        fn random() -> Self {
+            Self(Data::random())
+        }
     }
 
-    fn random() -> Self {
-        Self(Data::random())
-    }
+    test_cbor_roundtrip!(Script);
+    test_envelope_roundtrip!(Script);
 }
-
-test_cbor_roundtrip!(Script);
-test_envelope_roundtrip!(Script);

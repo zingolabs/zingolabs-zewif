@@ -1,7 +1,7 @@
 use anyhow::Context;
 use bc_envelope::prelude::*;
 
-use crate::{NonHardenedChildIndex, test_envelope_roundtrip};
+use crate::NonHardenedChildIndex;
 
 /// Hierarchical deterministic (HD) derivation information for wallet addresses.
 ///
@@ -74,7 +74,10 @@ impl DerivationInfo {
     /// let derivation_info = DerivationInfo::new(change, address_index);
     /// ```
     pub fn new(change: NonHardenedChildIndex, address_index: NonHardenedChildIndex) -> Self {
-        Self { change, address_index }
+        Self {
+            change,
+            address_index,
+        }
     }
 
     /// Returns the change component of the derivation path.
@@ -114,21 +117,34 @@ impl TryFrom<Envelope> for DerivationInfo {
     type Error = anyhow::Error;
 
     fn try_from(envelope: Envelope) -> Result<Self, Self::Error> {
-        envelope.check_type_envelope("DerivationInfo").context("DerivationInfo")?;
+        envelope
+            .check_type_envelope("DerivationInfo")
+            .context("DerivationInfo")?;
         let change = envelope.extract_subject().context("change")?;
-        let address_index = envelope.extract_object_for_predicate("address_index").context("address_index")?;
-        Ok(Self { change, address_index })
+        let address_index = envelope
+            .extract_object_for_predicate("address_index")
+            .context("address_index")?;
+        Ok(Self {
+            change,
+            address_index,
+        })
     }
 }
 
 #[cfg(test)]
-impl crate::RandomInstance for DerivationInfo {
-    fn random() -> Self {
-        Self {
-            change: NonHardenedChildIndex::random(),
-            address_index: NonHardenedChildIndex::random(),
+mod tests {
+    use crate::{NonHardenedChildIndex, test_envelope_roundtrip};
+
+    use super::DerivationInfo;
+
+    impl crate::RandomInstance for DerivationInfo {
+        fn random() -> Self {
+            Self {
+                change: NonHardenedChildIndex::random(),
+                address_index: NonHardenedChildIndex::random(),
+            }
         }
     }
-}
 
-test_envelope_roundtrip!(DerivationInfo);
+    test_envelope_roundtrip!(DerivationInfo);
+}
