@@ -43,10 +43,10 @@
 //! ## Usage Examples
 //!
 //! ```no_run
-//! use zewif::{Zewif, ZewifWallet, Network, Account, Address};
+//! use zewif::{Zewif, ZewifWallet, Network, Account, Address, BlockHeight};
 //!
 //! // Create a new ZeWIF container
-//! let mut zewif = Zewif::new();
+//! let mut zewif = Zewif::new(BlockHeight::from_u32(2000000));
 //!
 //! // Create a new wallet for the main network
 //! let mut wallet = ZewifWallet::new(Network::Main);

@@ -3,7 +3,7 @@ use bc_components::ARID;
 use bc_envelope::prelude::*;
 use std::collections::HashMap;
 
-use crate::{Indexed, envelope_indexed_objects_for_predicate};
+use crate::{BlockHeight, Indexed, envelope_indexed_objects_for_predicate};
 
 use super::{Transaction, TxId, ZewifWallet};
 
@@ -38,9 +38,9 @@ use super::{Transaction, TxId, ZewifWallet};
 ///
 /// # Examples
 /// ```no_run
-/// # use zewif::{Zewif, ZewifWallet, Network, Transaction, TxId};
+/// # use zewif::{Zewif, ZewifWallet, Network, Transaction, TxId, BlockHeight};
 /// // Create the top-level container
-/// let mut zewif = Zewif::new();
+/// let mut zewif = Zewif::new(BlockHeight::from_u32(2000000));
 ///
 /// // Add a wallet
 /// let wallet = ZewifWallet::new(Network::Main);
@@ -59,17 +59,19 @@ pub struct Zewif {
     id: ARID,
     wallets: Vec<ZewifWallet>,
     transactions: HashMap<TxId, Transaction>,
+    export_height: BlockHeight,
     attachments: Attachments,
 }
 
 bc_envelope::impl_attachable!(Zewif);
 
 impl Zewif {
-    pub fn new() -> Self {
+    pub fn new(export_height: BlockHeight) -> Self {
         Self {
             id: ARID::new(),
             wallets: Vec::new(),
             transactions: HashMap::new(),
+            export_height,
             attachments: Attachments::new(),
         }
     }
@@ -106,11 +108,9 @@ impl Zewif {
     pub fn set_transactions(&mut self, transactions: HashMap<TxId, Transaction>) {
         self.transactions = transactions;
     }
-}
 
-impl Default for Zewif {
-    fn default() -> Self {
-        Self::new()
+    pub fn export_height(&self) -> BlockHeight {
+        self.export_height
     }
 }
 
@@ -121,6 +121,7 @@ impl From<Zewif> for Envelope {
             .add_type("Zewif");
         e = value.wallets.iter().fold(e, |e, wallet| e.add_assertion("wallet", wallet.clone()));
         e = value.transactions.iter().fold(e, |e, (_, transaction)| e.add_assertion("transaction", transaction.clone()));
+        e = e.add_assertion("export_height", value.export_height);
         value.attachments.add_to_envelope(e)
     }
 }
@@ -139,12 +140,14 @@ impl TryFrom<Envelope> for Zewif {
             .try_objects_for_predicate::<Transaction>("transaction")?
             .into_iter().map(|tx| (tx.txid(), tx)).collect();
 
+        let export_height = envelope.extract_object_for_predicate("export_height").context("export_height")?;
         let attachments = Attachments::try_from_envelope(&envelope).context("attachments")?;
 
         Ok(Self {
             id,
             wallets,
             transactions,
+            export_height,
             attachments,
         })
     }
@@ -155,7 +158,7 @@ mod tests {
     use bc_components::ARID;
     use bc_envelope::Attachments;
 
-    use crate::{Transaction, test_envelope_roundtrip};
+    use crate::{BlockHeight, Transaction, test_envelope_roundtrip};
 
     use super::Zewif;
 
@@ -170,6 +173,7 @@ mod tests {
                     .iter()
                     .map(|tx| (tx.txid(), tx.clone()))
                     .collect(),
+                export_height: BlockHeight::random(),
                 attachments: Attachments::random(),
             }
         }
