@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+#
+# One‑time setup: create and push an initial gh‑pages branch containing
+# `cargo doc` output for the current Rust crate repository.
+#
+# After this, use the deploy script for subsequent updates.
+
+set -euo pipefail
+
+REPO_URL="$(git remote get-url origin)"
+DEPLOY_DIR="/tmp/cargo-doc-setup"
+TARGET_DIR=${CARGO_TARGET_DIR:-$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')}
+CRATE_DIR=${CARGO_MANIFEST_DIR:-$(pwd)}
+CRATE_NAME=${CARGO_PKG_NAME:-$(grep -m1 '^name' Cargo.toml | sed -E 's/name *= *"(.*)".*/\1/')}
+DOC_DIR="$TARGET_DIR/doc/$CRATE_NAME"
+
+# ── Sanity checks ──────────────────────────────────────────────────────────────
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo '❌ Error: not inside a Git repository.'
+  exit 1
+fi
+
+if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+  echo '❌ origin/gh-pages already exists. Run the regular deploy script instead.'
+  exit 1
+fi
+
+# ── Build documentation ────────────────────────────────────────────────────────
+echo '📚 Building documentation…'
+RUSTDOCFLAGS="-Z unstable-options --static-root-path=static.files/" \
+    cargo +nightly doc --no-deps --all-features
+
+# ── Prepare temporary gh-pages worktree ────────────────────────────────────────
+rm -rf "$DEPLOY_DIR"
+mkdir -p "$DEPLOY_DIR"
+pushd "$DEPLOY_DIR" >/dev/null
+
+git init
+git checkout --orphan gh-pages
+
+# Copy resources in
+cp -R "$TARGET_DIR/doc/static.files/" "$DEPLOY_DIR/static.files/"
+# Copy docs in, preserving subdirs
+cp -R "$TARGET_DIR/doc/$CRATE_NAME/" "$DEPLOY_DIR/"
+touch .nojekyll
+[[ -f "$CRATE_DIR/CNAME" ]] && cp "$CRATE_DIR/CNAME" .
+
+# open $DEPLOY_DIR
+# exit 0
+
+git add .
+git commit -m "Initial deploy of $CRATE_NAME documentation"
+git remote add origin "$REPO_URL"
+git push -u origin gh-pages
+
+popd >/dev/null
+rm -rf "$DEPLOY_DIR"
+
+echo "✅ GitHub Pages branch 'gh-pages' created and published."
+echo "👉 In your repo settings → Pages, set source to the 'gh-pages' branch, root directory."
