@@ -9,7 +9,10 @@ set -euo pipefail
 
 REPO_URL="$(git remote get-url origin)"
 DEPLOY_DIR="/tmp/cargo-doc-setup"
-DOC_DIR="cargo-docs"
+TARGET_DIR=${CARGO_TARGET_DIR:-$(cargo metadata --format-version 1 --no-deps | jq -r '.target_directory')}
+CRATE_DIR=${CARGO_MANIFEST_DIR:-$(pwd)}
+CRATE_NAME=${CARGO_PKG_NAME:-$(grep -m1 '^name' Cargo.toml | sed -E 's/name *= *"(.*)".*/\1/')}
+DOC_DIR="$TARGET_DIR/doc/$CRATE_NAME"
 
 # ── Sanity checks ──────────────────────────────────────────────────────────────
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -24,16 +27,8 @@ fi
 
 # ── Build documentation ────────────────────────────────────────────────────────
 echo '📚 Building documentation…'
-cargo doc --all-features --no-deps
-
-# ── Determine crate name and create root redirect ─────────────────────────────
-CRATE_NAME=$(grep -m1 '^name' Cargo.toml | sed -E 's/name *= *"(.*)".*/\1/')
-cat >"$DOC_DIR/index.html" <<EOF
-<!DOCTYPE html><html lang="en"><head>
-<meta http-equiv="refresh" content="0; url=${CRATE_NAME}/index.html">
-<title>Redirecting to ${CRATE_NAME} docs…</title>
-</head><body></body></html>
-EOF
+RUSTDOCFLAGS="-Z unstable-options --static-root-path=static.files/" \
+    cargo +nightly doc --no-deps --all-features
 
 # ── Prepare temporary gh-pages worktree ────────────────────────────────────────
 rm -rf "$DEPLOY_DIR"
@@ -43,10 +38,15 @@ pushd "$DEPLOY_DIR" >/dev/null
 git init
 git checkout --orphan gh-pages
 
+# Copy resources in
+cp -R "$TARGET_DIR/doc/static.files/" "$DEPLOY_DIR/static.files/"
 # Copy docs in, preserving subdirs
-cp -R "$OLDPWD/$DOC_DIR/"* .
+cp -R "$TARGET_DIR/doc/$CRATE_NAME/" "$DEPLOY_DIR/"
 touch .nojekyll
-[[ -f "$OLDPWD/CNAME" ]] && cp "$OLDPWD/CNAME" .
+[[ -f "$CRATE_DIR/CNAME" ]] && cp "$CRATE_DIR/CNAME" .
+
+# open $DEPLOY_DIR
+# exit 0
 
 git add .
 git commit -m "Initial deploy of $CRATE_NAME documentation"
