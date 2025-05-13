@@ -1,9 +1,9 @@
 # How To Use Attachments with ZeWIF 
-### v1.0 (5/7/25)
+### v1.0.1 (5/13/25)
 
 The ZeWIF data format is built on [Gordian Envelope](https://developer.blockchaincommons.com/envelope/). This provides it with access to many additional features that might not be utilized in the first iteration of the ZeWIF standard but which may be of use in the future, including compression and elision and the ability to securely transmit files with [GSTP](https://developer.blockchaincommons.com/envelope/gstp/).
 
-Another special feature of Envelope is the "attachment", defined in [BCR-2023-006](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2023-006-envelope-attachment.md) and summarized here. Attachments are used in ZeWIF, specifically to store content for certain data classes. Attachment points are available in many parts of the ZeWIF structure, including the top-level structure.
+Another special feature of Envelope is the "attachment", defined in [BCR-2023-006](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2023-006-envelope-attachment.md) and summarized here. Attachments are used in ZeWIF to store content for certain data classes, with attachment points  available in many parts of the ZeWIF structure, including the top-level structure.
 
 ## Data Classes in ZeWIF
 
@@ -15,7 +15,7 @@ ZeWIF organizes data into three classes:
 
 Class I data is defined in the ZeWIF spec. All data imported from `zcashd` is believed to fall into this class. It can be encoded by the `zewif` crate and is marked with Envelope typing, using the `isA` statement. Class I data structures also often include attachment points so that related data that is not Class I can be stored near to its peers. Class II data should still be stored as part of a ZeWIF file, but is not specified, so the storage is done through attachments. Class III data is not considered important enough to store, but should still be maintained as part of an attachment containing the entirety of the original wallet data file that is being migrated.
 
-To clarify attachments may be found in two places in a ZeWIF data file:
+To clarify, attachments may be found in two places in a ZeWIF data file:
 
 * **Top-Level Attachments.** The Zewif structure includes an attachment point for top-level content. [Best practices](bestpractices.md) suggest that a copy of the original data file be kept here. Additional data not relevant to a structure attachment might also be included here.
 * **Structure Attachments.** Individual lower-level structures also include attachments points when there was thought to be reason to include additional data or metadata on the topic that nonetheless was not Class I.
@@ -24,12 +24,12 @@ After a ZeWIF data file is output, additional attachments could also be made usi
 
 ## Envelope Technical Overview
 
-The [Gordian Envelope](https://developer.blockchaincommons.com) base specification is defined in an IETF Internet-Draft [draft-mcnally-envelope](https://datatracker.ietf.org/doc/draft-mcnally-envelope/), and is extended through a number of extensions defined in the [Blockchain Commons Research Repo](https://github.com/BlockchainCommons/research). This is the format that is used for at-rest storage of ZeWIF content. Understanding of the Envelope data format is _not_ required to use ZeWIF, even if input is occurring from ZeWIF data files or output is occurring to ZeWIF data files. The `zewif` crates, `zmigrate` tool, and associated docs should be all that are required to make use of ZeWIF.
+The [Gordian Envelope](https://developer.blockchaincommons.com) base specification is defined in an IETF Internet-Draft [draft-mcnally-envelope](https://datatracker.ietf.org/doc/draft-mcnally-envelope/), and is extended through a number of extensions defined in the [Blockchain Commons Research Repo](https://github.com/BlockchainCommons/research). This Envelope format is used for at-rest storage of ZeWIF content. Understanding the Envelope data format is _not_ required to use ZeWIF, even if input is occurring from ZeWIF data files or output is occurring to ZeWIF data files. The `zewif` crates, `zmigrate` tool, and associated docs should be all that are required to make use of ZeWIF.
 
 Nonetheless, the following major points are useful as an overview of Gordian Envelope:
 
 * **Envelope Uses CBOR.** Gordian Envelope is built using CBOR, a [well-specified](https://cbor.io/) and mature binary data representation format. Every Envelope is not only [legal CBOR](https://datatracker.ietf.org/doc/html/rfc8949), but also [legal dCBOR](https://datatracker.ietf.org/doc/draft-mcnally-deterministic-cbor/), a deterministic version of CBOR. Every Envelope, and therefore every ZeWIF file, can be read using CBOR tools such as [cbor.me](https://cbor.me/). (But don't read ZeWIF files containing private keys in an online site!)
-* **Envelope Stores Data in a Merkle-Like Tree.** Gordian Envelope is a hierarchical tree structure. Central nodes lead to multiple branches and eventually to leaves, which can be any CBOR data from simple integers or strings all the way to complex structures (including Gordian Envelopes!) This allows for the organized storage of data. The tree is Merkle-like because every node is associated with a unique digest, which can be used to prove the data that lies under it (a benefit which may not be relevant for the first iteration of ZeWIF, but which allows for powerful elision and signatures).
+* **Envelope Stores Data in a Merkle-Like Tree.** Gordian Envelope is built on a hierarchical tree structure. Central nodes lead to multiple branches and eventually to leaves, which can be any CBOR data from simple integers or strings all the way to complex structures (including Gordian Envelopes!). This allows for the organized storage of data. The tree is Merkle-like because every node is associated with a unique digest, which can be used to prove the data that lies under it (a benefit which may not be relevant for the first iteration of ZeWIF, but which allows for powerful elision and signatures).
 * **Envelope is Built on Semantic Triples.** Data is stored in a Gordian Envelope as a semantic triple of subject-predicate-object. Each predicate-object pair is called an assertion. An envelope is a subject about which zero or more assertions may be made. A node connects together a subject with its set of assertions.
 
 ```mermaid
@@ -80,9 +80,9 @@ graph LR
     10 --> 12
 ```
 
-* **Envelope Can Be Stored as a UR.** Blockchain Commons [Uniform Resource (UR) format](https://developer.blockchaincommons.com/ur/) supports the text encoding of CBOR data. This can be used to store a ZeWIF Envelope file and to encode it as a QR or an [Animated QR](https://developer.blockchaincommons.com/animated-qrs/). This can resolve issues of secure transmission across air gaps.
-* **Envelopes Can Be Signed.** Envelopes can be "wrapped" and then signed. This is not currently utilized by ZeWIF, but could be used in the future to guarantee the authenticity of a ZeWIF file. The separate [envelope command line tool](https://github.com/BlockchainCommons/bc-envelope-cli-rust) may also be used to sign ZeWIF files and verify signatures.
-* **Envelope Digests Allow Data to Be Elided.** Some or all data in an Envelope can be elided. Digests of elided data remain, allowing for proof of content and proof of signature. This is another Envelope feature not currently utilized by ZeWIF, but that might have future usefulness. Again, the [envelope command line tool](https://github.com/BlockchainCommons/bc-envelope-cli-rust) can be used to access this functionality.
+* **Envelope Can Be Stored as a UR.** The Blockchain Commons [Uniform Resource (UR) format](https://developer.blockchaincommons.com/ur/) supports the text encoding of CBOR data. This can be used to store a ZeWIF Envelope file and to encode it as a QR or an [Animated QR](https://developer.blockchaincommons.com/animated-qrs/). This can allow secure transmission across air gaps.
+* **Envelopes Can Be Signed.** Envelopes can be "wrapped" and then signed. This is not currently utilized by ZeWIF, but could be used in the future to guarantee the authenticity of a ZeWIF file. The separate [envelope command line tool](https://github.com/BlockchainCommons/bc-envelope-cli-rust) may be used right now to sign ZeWIF files and verify signatures.
+* **Envelope Digests Allow Data to Be Elided.** Some or all data in an Envelope can be elided. Digests of elided data remain, allowing for proof of content and proof of signature. This is another Envelope feature not currently utilized by ZeWIF, but that might have future usefulness. Again, the [envelope command line tool](https://github.com/BlockchainCommons/bc-envelope-cli-rust) can be used to access this functionality immediately.
 
 ### Wrapped Envelopes
 
@@ -127,10 +127,10 @@ Attachments are fully described in [BCR-2023-006](https://github.com/BlockchainC
 Attachments make use of Envelope wrapping (described above) and of [known values](https://github.com/BlockchainCommons/Research/blob/master/papers/bcr-2023-002-known-value.md), which are a namespace of 64-bit integers registered with Blockchain Commons and used to convey specific concepts in a precise, compact way.
 
 * An attachment is an assertion in an envelope, meaning that it contains a predicate and an object.
-* The predicate of an attachment is a specific known value #50, which is registered as `attachment`.
+* The predicate of an attachment is a specific known value, #50, which is registered as `attachment`.
 * The object of an attachment is the payload of attachment data.
 
-When creating a payload for a ZeWIF attachment you might simply dump in the otherwise unspecified data as a binary blob, matching whatever format the data was held in in the originating wallet. It's better to simplify and standardize it as much as possible as discussed in the [ZeWIF best practices](bestpractices.md#attachments). Because an object can be a full Envelope, it's also possible to create an entire recursive data structure as the object of an attachment.
+When creating a payload for a ZeWIF attachment, you might simply dump in the otherwise unspecified data as a binary blob, matching whatever format the data was held in in the originating wallet. It's better to simplify and standardize it as much as possible as discussed in the [ZeWIF best practices](bestpractices.md#attachments). Because an object can be a full Envelope, it's also possible to create an entire recursive data structure as the object of an attachment, allowing for the inclusion of additional metadata.
 
 * Once an attachment has been created, the Envelope is wrapped, turning it into the subject of a new Envelope.
 * A `vendor` assertion MUST be added. This is a predicate of known value #51 with the object of a string for the vendor name.
@@ -141,7 +141,7 @@ That's it! You have an attachment! And, if you're using the `zewif` crate you do
 attachments.add(payload,vendor,conforms_to);
 ```
 
-You should create attachments for all of the data in your wallet that is not defined by the ZeWIF spec.
+You should create attachments for all of the Class II data in your wallet that is not defined by the ZeWIF spec (which is to say: any data that will may remain relevant for an importing wallet).
 
 ### Defining `vendor` and `conformsTo`
 
