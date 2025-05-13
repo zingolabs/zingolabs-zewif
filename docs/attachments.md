@@ -1,4 +1,5 @@
-# How To Use Attachments with ZeWIF v1.0 (5/7/25)
+# How To Use Attachments with ZeWIF 
+#### v1.0 (5/7/25)
 
 The ZeWIF data format is built on [Gordian Envelope](https://developer.blockchaincommons.com/envelope/). This provides it with access to many additional features that might not be utilized in the first iteration of the ZeWIF standard but which may be of use in the future, including compression and elision and the ability to securely transmit files with [GSTP](https://developer.blockchaincommons.com/envelope/gstp/).
 
