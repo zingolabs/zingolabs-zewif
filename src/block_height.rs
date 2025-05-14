@@ -44,7 +44,7 @@ use std::ops::{Add, Sub};
 /// assert_eq!(blocks_between, 1_000_000);
 /// ```
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct BlockHeight(u32);
 
 /// The height of the genesis block on a network.

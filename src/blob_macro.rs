@@ -182,7 +182,7 @@ macro_rules! blob {
             fn try_from(cbor: bc_envelope::prelude::CBOR) -> Result<Self, Self::Error> {
                 let bytes = cbor.try_into_byte_string()?;
                 Self::from_slice(&bytes).map_err(|_| {
-                    dcbor::Error::Custom(format!(
+                    dcbor::Error::msg(format!(
                         "slice length invalid; expected {} bytes, got {}",
                         $size,
                         bytes.len()

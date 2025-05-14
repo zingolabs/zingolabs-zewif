@@ -357,7 +357,7 @@ impl<const N: usize> TryFrom<CBOR> for Blob<N> {
     fn try_from(cbor: CBOR) -> dcbor::Result<Self> {
         let bytes = cbor.try_into_byte_string()?;
         let blob =
-            Blob::from_slice(&bytes).map_err(|e| dcbor::Error::Custom(format!("Blob: {e}")))?;
+            Blob::from_slice(&bytes).map_err(|e| dcbor::Error::msg(format!("Blob: {e}")))?;
         Ok(blob)
     }
 }
