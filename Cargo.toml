@@ -1,11 +1,11 @@
 [package]
 name = "zingolabs-zewif"
 description = "Fork of Blockhain Commons's zewif crate."
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 repository = "https://github.com/zingolabs/zewif"
 homepage = "https://github.com/zingolabs/zewif"
-license = "BSD-2-Clause-Patent"
+license = "MIT AND Apache-2.0"
 
 [dependencies]
 dcbor = { version = "^0.19.0", features = ["anyhow"] }
